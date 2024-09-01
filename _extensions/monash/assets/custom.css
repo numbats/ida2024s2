@@ -1,0 +1,57 @@
+/* Bold color. */
+strong {
+  color: #C8008F;
+}
+
+/* Display a PNG file as an icon. Use it as a class of an <img> element. */
+.png-icon {
+  height:1em;
+  width:1.13em;
+  vertical-align:-0.125em;
+  margin-left:auto;
+  margin-right:auto;
+  font-size:inherit;
+  fill:currentColor;
+  overflow:visible;
+  position:relative;
+  margin-top:0px !important;
+  margin-bottom:0px !important;
+}
+
+/* WebR code output background color. */
+.qwebr-output-code-area pre {
+  background-color: #e8e8e8;
+}
+
+/* Cancel the bold color. */
+.callout-title strong {
+  color: black;
+}
+
+/* Cancel the kableExtra wired row height setting. Too much space for each row if a smaller font size is used. */
+.lightable-material td {
+  height: auto !important;
+}
+
+/* Cancel the kableExtra wired width setting. The table gets truncated if it is bigger than the container. */
+.lightable-material {
+  min-width: 0% !important;
+}
+
+/* Remove the top margin of callout(s). Place it around callout(s). */
+.no-top-margin-callout .callout{
+  margin-top: 0px;
+}
+
+/* Modify the height of the output code. h-XXX means XXX pixels. Place it around {webr-r} code chunk. */
+.h300-webr-pre-output .qwebr-output-code-area pre {
+  max-height: 500px !important;
+}
+
+.h500-webr-pre-output .qwebr-output-code-area pre {
+  max-height: 500px !important;
+}
+
+.h600-webr-pre-output .qwebr-output-code-area pre {
+  max-height: 500px !important;
+}

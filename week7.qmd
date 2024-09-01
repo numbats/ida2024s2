@@ -1,0 +1,1078 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 7: Relatoinal Data"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 7 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'nycflights13']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+```
+
+---
+
+## Welcome! {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+## `r fontawesome::fa("id-badge")` About me
+
+::: {.columns}
+
+::: {.column width=40% }
+
+![](images/patrick-li.jpg){width=50%}
+
+::: {.smaller .monash-blue2}
+
+Patrick Li<br>
+Lecturer<br>
+Econometrics and Business Statistics<br>
+Monash University<br>
+
+`r fontawesome::fa("github")` [TengMCing](https://github.com/TengMCing)
+
+`r fontawesome::fa("envelope")` [patrick.li@monash.edu](mailto:patrick.li@monash.edu)
+
+:::
+
+
+:::
+
+::: {.column width=50% .callout-note appearance="minimal"}
+
+
+
+- I am a PhD candidate currently awaiting thesis review.
+- With over 20 years of programming experience, I have worked in languages such as C, Pascal, and Python, and have used R for the past 6 years.
+- My research focuses on data visualization, machine learning, visual inference, and computer vision models.
+- I have a strong interest in developing statistical software.
+- I have tutored business analytics units for 4 years, including the **ETC3250/ETC5250 Introduction to Machine Learning**, **ETC5523 Communicating with Data**, and **ET5521 Exploratory Data Analysis**.
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("calendar-days")` Teaching Schedule
+
+::: {.columns}
+
+::: {.column width=60% }
+
+
+ I will be teaching the second half of this unit. This includes
+ 
+ - Relational data (week 7)
+ - Web scraping (week 8)
+ - Text analysis (week 9)
+ - Cluster analysis (week 10)
+ - Linear models (week 11)
+ - Review and discussion (week 12)
+ 
+:::
+
+::: {.column width=40% }
+
+::: {.callout-important icon=false}
+
+
+## `r fontawesome::fa("tasks")` Upcoming Assessment
+
+**Mid-semester Test (week 7)**
+
+Assignment 2 (week 9)
+
+Final Exam (Nov 8th)
+
+:::
+ 
+::: 
+
+:::
+
+---
+
+## `r fontawesome::fa("crosshairs")` Expectation
+ 
+
+Upon completion, you will 
+
+- become an intermediate R user, 
+- capable of **tidying, exploring, and analyzing data**, and 
+- compiling it all into a **reproducible report** using RMarkdown or Quarto.
+
+---
+
+## <img src="images/webR.png" class="png-icon"> Code Examples
+
+I will use `webR` with the `quarto-webr` extension to run code interactively within the slides during the lecture whenever possible, and I encourage you to explore and run the code yourself.
+
+The `tidyverse` package is already loaded.
+
+::: {.columns}
+
+::: {.column width=50%}
+
+```{webr-r}
+summary(cars)
+```
+
+:::
+
+::: {.column width=50%}
+
+```{webr-r}
+ggplot(cars) +
+  geom_point(aes(dist, speed))
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("lightbulb")` Recap
+
+- Advanced `ggplot` customization
+- Palettes
+- Color usage
+- Animated plots (`gganimate`)
+- Computer paths and RStudio projects
+
+---
+
+## Relational Data {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("sitemap")` Outline
+
+1. What is relational data?
+2. How to combine different data sets for data analysis?
+3. Joins and Keys
+4. Different types of joins
+5. Stacking data frames
+6. Working with Excel files
+
+---
+
+## `r fontawesome::fa("database")` Relational Data
+
+<br>
+
+::: {.f1}
+
+Multiple tables of data are called **relational data**.
+
+:::
+
+<br>
+
+- Data analysis **rarely involves** only a single table of data.
+
+- To answer questions we generally need to **combine many tables of data**.
+
+- It is the **relations**, not just the individual data sets, that are important. The existence of common variables (keys/value pairs) allow us to combine different data sets.
+
+
+
+
+
+---
+
+## `r fontawesome::fa("plane-departure")` Flights that Departed NYC in 2013
+
+The `nycflights13` package contains data set of flights that departed NYC in 2013. 
+
+It has **five tables**:
+
+1. `flights`: on-time data for all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013.
+2. `airlines`: airline names from their carrier codes.
+3. `airports`: records information about each airport (identified by the `faa` airport code).
+4. `planes`: data about each plane, identified by its `tailnum`.
+5. `weather`: information about the weather at each NYC airport for each hour.
+
+---
+
+## `r fontawesome::fa("layer-group")` Information Comes from Different Tables
+
+
+```{r}
+#| echo: false
+library(gt)
+library(kableExtra)
+lapply(list(flights, airlines, airports, planes, weather), function(x) {
+  result <- names(x)
+  c(result, rep("", 19 - length(result)))
+  }) %>%
+  `names<-`(c("flights", "airlines", "airports", "planes", "weather")) %>%
+  as_tibble() %>%
+  kbl(table.attr = 'data-quarto-disable-processing="true"') %>%
+  kable_material(c("striped", "hover"), font_size = 22, full_width = FALSE) %>%
+  column_spec(1:5, border_left = TRUE, border_right = TRUE) %>%
+  row_spec(c(1), extra_css = "border-top: 1.5px solid;") %>%
+  row_spec(c(19), extra_css = "border-bottom: 1.5px solid;") %>%
+  row_spec(0, extra_css = "border: 1.5px solid;")
+```
+
+
+---
+
+## `r fontawesome::fa("magnifying-glass")` Explore the Data Sets
+
+::: {.columns}
+
+::: {.column width=70%}
+
+
+::: {.h500-webr-pre-output}
+
+```{webr-r}
+#| editor-max-height: 240
+#| autorun: false
+library(nycflights13)
+glimpse(flights)
+glimpse(airlines)
+glimpse(airports)
+glimpse(planes)
+glimpse(weather)
+```
+
+:::
+
+
+:::
+
+::: {.column width=30%}
+
+::: {.callout-tip .no-top-margin-callout}
+
+
+- Use Crtl/CMD + Enter/Return to run a single line of code or highlighted code.
+- Use Shift + Enter/Return to run the entire code block.
+
+:::
+
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("diagram-project")` Concept Map of Tables and Joins from the Text
+
+::: {style="width:70%; margin: auto;"}
+
+```{r}
+#| echo: false
+knitr::include_graphics("images/relational-nycflights.png")
+```
+
+:::
+
+
+---
+
+## `r fontawesome::fa("key")`  Keys
+
+::: {.f1}
+
+Keys are **variable(s)** used to **connect records in one table to another**.
+
+Keys can **uniquely identifies** an observation.
+
+:::
+
+There are two types of keys:
+
+::: {.columns}
+
+::: {.column width=50% .callout-note}
+
+## 1. Primary Key
+
+- uniquely identifies an observation in its own table.
+- For example, `planes$tailnum` is a primary key because it **uniquely identifies each plane** in the planes table.
+  
+  
+:::
+
+::: {.column width=50% .callout-note}
+
+## 2. Foreign key
+
+- uniquely identifies an observation in another table.
+- For example, `flights$tailnum` is a foreign key because it helps to **combine flights and planes data**. It references the primary key of another table and establish a link between the existing table and another table.
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("key")`  Keys
+
+::: {.columns}
+
+::: {.column width=50%}
+
+In the `nycflights13` data,
+
+- `flights` connects to `planes` by a single variable `tailnum`.
+- `flights` connects to `airlines` by a single variable `carrier`.
+- `flights` connects to `airports` by two variables, `origin` and `dest`.
+- `flights` connects to `weather` using multiple variables, `origin`, and `year`, `month`, `day` and `hour`.
+
+:::
+
+::: {.column width=50%}
+
+```{r}
+#| echo: false
+knitr::include_graphics("images/relational-nycflights.png")
+```
+
+:::
+
+
+:::
+
+---
+
+## `r fontawesome::fa("code-merge")` Joins
+
+Joins allow you to combine information from multiple tables.
+
+There is always a decision on **what variables and observations are copied to the new table**.
+
+We will explore six types of joins, grouped into two main categories:
+
+::: {.columns}
+
+::: {.column width=50% .callout-note}
+
+## Mutating joins
+- Inner join: `inner_join()`
+- Left join: `left_join()`
+- Right join: `right_join()`
+- Full join: `full_join()`
+
+:::
+
+::: {.column width=50% .callout-note}
+
+## Filtering joins
+
+- Semi join: `semi_join()`
+- Anti join: `anti_join()`
+
+:::
+
+:::
+
+Let's discuss how joins work using some [lovely animations](https://github.com/gadenbuie/tidyexplain) provided by Garrick Aden-Buie.
+
+---
+
+## `r fontawesome::fa("table")` Example Data
+
+```r
+x <- tibble(id = c(1, 2, 3),
+            x = c("x1", "x2", "x3"))
+y <- tibble(id = c(1, 2, 4),
+            y = c("y1", "y2", "y4"))
+```
+
+
+::: {style="width:50%; margin: auto;"}
+
+```{r echo=FALSE}
+knitr::include_graphics("images/original-dfs.png")
+```
+
+:::
+
+---
+
+## Mutating Joins {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("minimize")` Inner Join
+
+
+::: {style="display: none"}
+
+```{webr-r}
+#| context: setup
+x <- tibble::tibble(id = c(1, 2, 3),
+                    x = c("x1", "x2", "x3"))
+y <- tibble::tibble(id = c(1, 2, 4),
+                    y = c("y1", "y2", "y4"))
+```
+
+:::
+
+::: {.columns}
+
+::: {.column width=50%}
+
+An **inner join** matches pairs of observations **when their keys are equal**.
+
+The output of an inner join is a new data frame that contains
+
+- **key** 
+- **x values** 
+- **y values**
+
+::: {.callout-important}
+
+The _unmatched rows **are not** included_ in the result.
+
+:::
+
+:::
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/inner-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+inner_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("minimize")` Inner Join
+
+::: {.columns}
+
+::: {.column width=50%}
+
+Use `inner_join()` to combine the full airline names with the flights data. 
+
+::: {.callout-note}
+
+- Since every carrier code in `flights` matches one in `airlines`, all 336,766 observations from `flights` will be retained.
+
+- The full airline names will be added to the resulting table.
+
+:::
+
+:::
+
+::: {.column width=50%}
+
+```{webr-r}
+#| editor-max-height: 400
+flights %>%
+  inner_join(airlines, by = "carrier") %>%
+  glimpse()
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("object-ungroup")` Outer joins
+
+An **outer join** keeps observations that **appear in at least one of the tables**.
+
+Three types of outer joins:
+
+- Left join: keeps **all observations in x**.
+- Right join: keeps **all observations in y**.
+- Full join: keeps **all observations in x and y**.
+
+`dplyr` functions:
+
+::: {style="width:50%; margin: auto;"}
+
+```{r echo=FALSE}
+knitr::include_graphics("images/join-venn.png")
+```
+
+:::
+
+
+---
+
+## `r fontawesome::fa("align-left")` Left Join
+
+**All** observations from the **left table**, but **only** the observations from the **right table** that match those in the left.
+
+::: {.columns}
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/left-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+left_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/left-join-extra.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+x_extra <- tibble(id = c(1, 2, 3), 
+                  x = c("x1", "x2", "x3"))
+y_extra <- tibble(id = c(1, 2, 4, 2), 
+                  y = c("y1", "y2", "y4", "y5"))
+left_join(x_extra, y_extra, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("align-left")` Left Join
+
+::: {.columns}
+
+::: {.column width=50%}
+
+Use `left_join()` to combine the information about each plane with the flights data. 
+
+::: {.callout-note}
+
+- Out of the 336,776 tail numbers in `flights`, only 284,170 match those in `planes`. 
+
+- `left_join(flights, planes)` keeps all observations from `flights`, the resulting table will have 336,776 rows. 
+
+- Some additional variables from `planes`, such as `manufacturer`, will have `NA` values where there are no matches.
+
+:::
+
+:::
+
+::: {.column width=50%}
+
+```{webr-r}
+#| editor-max-height: 400
+flights %>%
+  left_join(planes, by = "tailnum") %>%
+  filter(!tailnum %in% planes$tailnum) %>%
+  glimpse()
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("align-right")` Right Join
+
+
+::: {.columns}
+
+::: {.column width=50%}
+
+Same as left join, but in **reverse**.
+
+::: {.callout-tip}
+
+
+Technically, you can replace `left_join(x, y)` by `right_join(y, x)`, but be aware that the order of the variables in the resulting table will differ.
+
+
+:::
+
+:::
+
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/right-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+right_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("align-justify")` Full Join
+
+
+::: {.columns}
+
+::: {.column width=50%}
+
+**Union** of the two tables, **all observations from both**, and missing values might get added.
+
+:::
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/full-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+full_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("not-equal")` Different Key Name when Joining Tables
+
+
+::: {.columns}
+
+::: {.column}
+
+What if the key names from the two tables are different?
+
+Use a **named vector** to specify the key pair.
+
+The primary key in `x_diff_key` is `x_id`.
+
+The primary key in `y_diff_key` is `y_id`.
+
+::: {.callout-note}
+
+The key name from the left table will be retained in the resulting table.
+
+:::
+
+:::
+
+::: {.column}
+
+```{webr-r}
+#| editor-max-height: 400
+x_diff_key <- tibble(x_id = c(1, 2, 3), 
+                     x = c("x1", "x2", "x3"))
+y_diff_key <- tibble(y_id = c(1, 2, 4), 
+                     y = c("y1", "y2", "y4"))
+right_join(x_diff_key, y_diff_key, 
+           by = c("x_id" = "y_id"))
+```
+
+:::
+
+:::
+
+---
+
+## Filtering Joins {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("filter")` Semi Join
+
+::: {.columns}
+
+::: {.column}
+
+keeps all observations in x **that have a match in y** and returns **just the columns from x**. 
+
+Same as an inner join, but no additional columns are added.
+
+::: {.callout-note}
+
+A semi join can be replaced by a `filter()` call, which is often recommended because it makes the code easier to read.
+
+:::
+
+:::
+
+::: {.column}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/semi-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+semi_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("minus-circle")` Anti Join
+
+::: {.columns}
+
+::: {.column}
+
+Drops all observations in x that have a match in y.
+
+::: {.callout-note}
+
+An anti join can also be replaced by a `filter()` call, and it is often recommended.
+
+:::
+
+:::
+
+::: {.column}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("film")` Animation
+
+```{r echo=FALSE}
+knitr::include_graphics("images/anti-join.gif")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```{webr-r}
+#| editor-max-height: 400
+anti_join(x, y, by = "id")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("plane-departure")` Flights Joining to Airports and Airlines
+
+Retrieve both the airport and airline information for each flight based on its departure location.
+
+```{webr-r}
+#| editor-max-height: 400
+flights %>%
+  left_join(airports, by = c("origin" = "faa")) %>%
+  left_join(airlines, by = "carrier") %>%
+  rename(origin_airport = name.x, airline = name.y) %>%
+  glimpse() 
+```
+
+---
+
+## `r fontawesome::fa("cloud")` Flights Joining to Weather
+
+::: {.columns}
+
+::: {.column}
+
+Retrieve the weather information for each flight based on the departure location and time.
+
+::: {.callout-note}
+
+`time_hour` is a datetime variable that consolidates the information from `year`, `month`, `day`, and `hour`.
+
+In the weather data set, the combination of `origin` and `time_hour` can **uniquely identify each row**, as does the combination of `origin`, `year`, `month`, `day`, and `hour`.
+
+Both combinations can be used for joins. We use the second combination as the **primary key** in this case.
+
+:::
+
+:::
+
+::: {.column}
+
+```{webr-r}
+#| editor-max-height: 400
+flights %>%
+  left_join(select(weather, -time_hour),
+            by = c("origin", "year", "month", "day", "hour")) %>%
+  glimpse() 
+```
+
+:::
+
+:::
+
+---
+
+## Stacking Data Frames  {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("cubes-stacked")` Stacking Rows
+
+`bind_rows()` will bind multiple data frames **by row**, making a longer result.
+
+The output will contain **all columns that appear in any of the inputs**.
+
+Columns are matched by name, and any **missing columns will be filled with `NA`**.
+
+```{webr-r}
+bind_rows(x, y)
+```
+
+---
+
+## `r fontawesome::fa("cubes-stacked")` Stacking Columns
+
+`bind_cols()` will bind multiple data frames **by column**, making a wider result.
+
+**Row sizes must be compatible when binding column**.
+
+```{webr-r}
+#| editor-max-height: 400
+bind_cols(
+  tibble(id = c(1, 2, 3), x = c("x1", "x2", "x3")),
+  tibble(y = c("y1", "y2", "y3"))
+)
+```
+
+---
+
+## Working with Excel Files {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("handcuffs")` Example Data: NSW Crime Statistics
+
+```{r echo=FALSE}
+knitr::include_graphics("images/nsw-crime-website.png")
+```
+
+
+[https://bocsar.nsw.gov.au/statistics-dashboards/open-datasets/local-area-datasets.html](https://bocsar.nsw.gov.au/statistics-dashboards/open-datasets/local-area-datasets.html)
+
+---
+
+## `r fontawesome::fa("handcuffs")` Example Data: NSW Crime Statistics
+
+
+```{r echo=FALSE}
+knitr::include_graphics("images/nsw-crime-excel.png")
+```
+
+[https://bocsar.nsw.gov.au/content/dam/dcj/bocsar/documents/publications/lga/NewSouthWales.xlsx](https://bocsar.nsw.gov.au/content/dam/dcj/bocsar/documents/publications/lga/NewSouthWales.xlsx)
+
+---
+
+## `r fontawesome::fa("toolbox")` Working with Excel Files
+
+List sheets in an Excel file:
+
+```{r}
+library(readxl)
+excel_sheets("data/NewSouthWales.xlsx")
+```
+
+Read different Excel sheets:
+
+```{r message=FALSE}
+read_excel("data/NewSouthWales.xlsx", sheet = 1) %>%
+  glimpse()
+```
+
+---
+
+## `r fontawesome::fa("toolbox")` Working with Excel Files
+
+::: {.columns}
+
+::: {.column}
+
+```{r echo=FALSE}
+knitr::include_graphics("images/nsw-crime-excel-highlight.png")
+```
+
+:::
+
+::: {.column}
+
+Read specific cells from an Excel file:
+
+```{r}
+read_excel("data/NewSouthWales.xlsx", 
+           sheet = 1, 
+           range = "E8:F20", 
+           col_names = c("num_of_incidents", 
+                         "rate_per_100000_population"))
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("toolbox")` Working with Excel Files
+
+::: {.callout-note}
+
+## Other ways to specify the **rectangle area (`range`)** you want to read data from
+
+- `anchored("C4", dim = c(3, 2))`: "C4" is the anchor point at the upper left. The selected area spans 3 rows and 2 columns.
+- `cell_limits(c(1, 3), c(2, 5))`: Defines a rectangle from the first row, third column (upper left) to the second row, fifth column (lower right).
+- `cell_rows(c(1, 3))`: Specifies the area spanning rows 1 through 3.
+- `cell_cols(c(1, 3))`: Specifies the area spanning columns 1 through 3.
+
+:::
+
+::: {.callout-tip}
+
+## A value of `NA` in `cell_limits()` means the corresponding limit is unspecified.
+
+- `cell_limits(c(NA, NA), c(NA, NA))` will select the entire sheet.
+- `cell_limits(c(1, NA), c(2, 5))` will select from the first row, first column (upper left) to the second row, fifth column (lower right).
+- `cell_limits(c(1, NA), c(2, NA))` will select row 1 and 2.
+
+:::
+
+---
+
+## `r fontawesome::fa("file")` Reading Different Formats
+
+The package `haven` enables `R` to read and write various data formats used by other statistical packages. 
+
+- SAS: `read_sas()`
+- SPSS: `read_spss()`
+- Stata: `read_stata()`
+
+---
+
+## `r fontawesome::fa("pencil")` Mid Semester Test
+
+::: {.f1}
+
+This is a timed quiz available from September 7 to September 12.
+
+You will have 80 minutes to complete it.
+
+Once you start, you **must finish**. **There is no option to save and return to it later**.
+
+Make sure you have **enough time before you begin**, as you only have one attempt.
+
+:::
