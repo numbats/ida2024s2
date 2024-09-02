@@ -4,6 +4,26 @@ The extensions including `coatless/webr` and `monash` are tweaked. Please copy t
 
 There are some features that could be useful for your slides
 
+## Image as icon
+
+Display a PNG file as an icon. Use it as a class of an `<img>` element.
+
+```css
+.png-icon {
+  height:1em;
+  width:1.13em;
+  vertical-align:-0.125em;
+  margin-left:auto;
+  margin-right:auto;
+  font-size:inherit;
+  fill:currentColor;
+  overflow:visible;
+  position:relative;
+  margin-top:0px !important;
+  margin-bottom:0px !important;
+}
+```
+
 ## Clock
 
 `_extensions/monash/assets/time.js` includes a `refreshTime()` function that updates the content of an HTML element every second based on the current time. This function powers the clock displayed in the slide footer. You can customize the element ID, time format, time zone, and update frequency to suit your needs.
@@ -160,4 +180,11 @@ webr:
   packages: ['tidyverse', 'nycflights13']
   autoload-packages: true
 ```
+### 16. Can I remove the startup message from the title page?
 
+Yes, you can disable it by adding the following to your YAML header:
+
+```yaml
+webr:
+  show-startup-message: false
+```
