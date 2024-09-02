@@ -1,1 +1,1 @@
-# ida2024s2
+# ETC1010/5510: Introduction to Data Analysis
