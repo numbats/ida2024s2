@@ -43,3 +43,14 @@ The `setup` context type runs the code in the background but may take up space d
 ::: {display: none}
 :::
 ```
+### 3. How do I adjust the font size of the webR console?
+
+To adjust the font size of webR code chunks, you can set the `editor-font-scale` individually for each chunk or apply it globally with:
+
+```yaml
+webr:
+  cell-options:
+    editor-font-scale: 0.6
+```
+
+The default value for Quarto slides is 0.5. This setting scales the font size relative to the page font size.
