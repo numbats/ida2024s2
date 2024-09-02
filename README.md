@@ -134,6 +134,30 @@ lapply(1:100, rnorm)
 Yes, it's possible, but it's not straightforward. For more details, see the [Monarch documentation](https://microsoft.github.io/monaco-editor/monarch.html).
 
 
-### Can I customize the syntax highlighting in the `quarto-webr` code output?
+### 12. Can I customize the syntax highlighting in the `quarto-webr` code output?
 
 Yes, you can use existing tools like `prismjs` to modify the `<code>` elements directly.
+
+### 13. Why does the `quarto-webr` code sometimes run automatically but throw an error when run manually?
+
+This could be because a variable is overridden in a later `quarto-webr` code chunk. Similar to RMarkdown, code chunks in `quarto-webr` are not independent and can affect one another.
+
+### 14. How can I install packages?
+
+Specify the packages in the YAML header:
+
+```yaml
+webr:
+  packages: ['tidyverse', 'nycflights13']
+```
+
+### 15. I have installed the packages. Why can’t I use their functions?
+
+Make sure to load the packages using `library()`, or set:
+
+```yaml
+webr:
+  packages: ['tidyverse', 'nycflights13']
+  autoload-packages: true
+```
+
