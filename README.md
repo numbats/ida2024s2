@@ -45,7 +45,7 @@ The `output` context type hides the code and only displays the results. Setting 
 The `setup` context type runs the code in the background but may take up space during the webR initialization and display some startup messages. To suppress this, you can wrap the code chunk with:
 
 ```
-::: {display: none}
+::: {style="display: none;"}
 :::
 ```
 ### 3. How do I adjust the font size of the `quarto-webr` code?
