@@ -4,8 +4,13 @@ The extensions including `coatless/webr` and `monash` are tweaked. Please copy t
 
 ## Features that could be useful for your slides
 
-- `_extensions/monash/assets/time.js` includes a `refreshTime()` function that updates the content of an HTML element every second based on the current time. This function powers the clock displayed in the slide footer. You can customize the element ID, time format, time zone, and update frequency to suit your needs.
-- `_extensions/coatless/webr` is a Quarto WebR extension. It powers the interactive R console in the slide. The document can be found in [https://quarto-webr.thecoatlessprofessor.com/](https://quarto-webr.thecoatlessprofessor.com/). Here I provide a FAQ.
+## Clock
+
+`_extensions/monash/assets/time.js` includes a `refreshTime()` function that updates the content of an HTML element every second based on the current time. This function powers the clock displayed in the slide footer. You can customize the element ID, time format, time zone, and update frequency to suit your needs.
+
+## `quarto-web`
+
+`_extensions/coatless/webr` is a Quarto WebR extension. It powers the interactive R console in the slide. The document can be found in [https://quarto-webr.thecoatlessprofessor.com/](https://quarto-webr.thecoatlessprofessor.com/). Here I provide a FAQ.
 
  ### 1. How do I include `quarto-webr` in my slide?
 
@@ -71,8 +76,13 @@ You can set `autorun` to `true` for individual code chunks or globally.
 
 This might be because you set `message` and `warning` to false, which suppresses all messages, including warnings and errors. If an error occurs, the code cannot be executed.
 
-### 8. Can I use interactive plots, such as those created with Plotly, in `quarto-webr`?
+### 8. Can I use interactive plots, such as those created with `ggplotly`, in `quarto-webr`?
 
-No. As far as I know, it is quite complicated to implement so it isn't likely to be supported anytime soon.
+No, this feature is not currently supported, and implementing it is quite complex. It isn't likely to be supported anytime soon.
+
+
+### 9. Can I turn off the vertical line suggestion in `quarto-webr` code chunks?
+
+Yes, but you’ll need to modify the extension directly. In `_extensions/coatless/webr/qwebr-monaco-editor-element.js`, locate the `monaco.editor.create()` method and add `guides: { indentation: false }`. This will disable the indentation guides. For a full list of available options, refer to the [Monaco Editor documentation](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IStandaloneEditorConstructionOptions.html).
 
 
