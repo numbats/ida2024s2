@@ -85,4 +85,48 @@ No, this feature is not currently supported, and implementing it is quite comple
 
 Yes, but you’ll need to modify the extension directly. In `_extensions/coatless/webr/qwebr-monaco-editor-element.js`, locate the `monaco.editor.create()` method and add `guides: { indentation: false }`. This will disable the indentation guides. For a full list of available options, refer to the [Monaco Editor documentation](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IStandaloneEditorConstructionOptions.html).
 
+### 10. How do I control the code output height?
+
+You need to adjust the CSS for the `quarto-webr` output code area as follows:
+
+```css
+.h300-webr-pre-output .qwebr-output-code-area pre {
+  max-height: 500px !important;
+}
+```
+
+When you wrap the `quarto-webr` code chunk with this class, the maximum height of it will be limited
+
+~~~
+::: {.h300-webr-pre-output}
+
+```{webr-r}
+lapply(1:100, rnorm)
+```
+
+:::
+~~~
+
+### 10. How do I control the height of the code output?
+
+To control the height of the `quarto-webr` output, you need to modify the CSS for the output code area:
+
+```css
+.h300-webr-pre-output .qwebr-output-code-area pre {
+  max-height: 500px !important;
+}
+```
+
+Wrap the `quarto-webr` code chunk with this class to limit its maximum height:
+
+~~~
+::: {.h300-webr-pre-output}
+
+```{webr-r}
+lapply(1:100, rnorm)
+```
+
+:::
+~~~
+
 
