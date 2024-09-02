@@ -1067,7 +1067,7 @@ The package `haven` enables `R` to read and write various data formats used by o
 
 ::: {.f1}
 
-This is a timed quiz available from September 7 to September 12.
+This is a timed quiz available from September 5 to September 8.
 
 You will have 80 minutes to complete it.
 

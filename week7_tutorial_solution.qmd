@@ -1,0 +1,391 @@
+---
+title: "ETC1010/5510 Tutorial 7 - Solution"
+subtitle: "Introduction to Data Analysis"
+author: "Patrick Li"
+date: "Aug 31, 2024"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  message = FALSE, 
+  warning = FALSE,
+  error = FALSE, 
+  out.width = "70%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3)
+set.seed(6)
+filter <- dplyr::filter
+```
+
+
+
+## `r emo::ji("target")` Workshop Objectives
+
+- Joining different datasets
+- Filtering joined data
+- Plotting joined data
+
+
+## `r emo::ji("wrench")` Instructions
+
+1. In each question, you will replace '___' with your answer. Please note that the Qmd will not knit until you've answered all of the questions.
+2. Once you have filled up all the blanks, remember to go to `knitr::opts_chunk` at the top of the document, change `eval = TRUE`, then knit the document.
+3. The `emo` package can be installed via `devtools::install_github("hadley/emo")`.
+4. This tutorial is rendered using Quarto. Quarto Markdown (QMD) uses the same syntax as R Markdown (RMD), so you can apply your current skills without any changes. While QMD includes advanced features, they are not needed for this unit. As a newer and more versatile document format, QMD has been used in many Business Analytics units within the Department of Econometrics and Business Statistics, especially those in the Master of Business Analytics program. For more information about QMD, you can read [https://quarto.org/docs/faq/rmarkdown.html](https://quarto.org/docs/faq/rmarkdown.html).
+
+## 🚧 Exercise 6A: Understanding joins
+
+#### Data preparation
+
+```{r data}
+library(tidyverse)
+gap_life <- read_csv("data/gap_life.csv")
+gap_life_au <- read_csv("data/gap_life_au.csv")
+gap_income <- read_csv("data/gap_income.csv")
+gap_income_au <- read_csv("data/gap_income_au.csv")
+gap_co2 <- read_csv("data/gap_co2.csv")
+gap_co2_au <- read_csv("data/gap_co2_au.csv")
+```
+
+### Section A:
+
+We have data on Australian life expectancy and income:
+
+```{r data-view}
+gap_life_au
+gap_income_au
+```
+
+How do we plot life expectancy against income? We need them in the same dataframe!
+
+One technique that we can use is `bind_cols()`, which binds dataframes together, column wise.
+
+```{r bind-data}
+bind_cols(gap_life_au,
+          gap_income_au)
+```
+
+But this technique has problems:
+
+1. It produces messy output with repeated columns.
+2. It doesn't work unless the dataframes have the same number of rows.
+
+For example, how do we combine the `co2` data with the income or life expectancy data?
+
+```{r data-view2}
+gap_co2_au
+```
+
+We can't use `bind_cols()`.
+
+```{r data-bind2, eval=FALSE}
+bind_cols(gap_co2_au,
+          gap_income_au)
+```
+
+This is because the number of rows are not the same! Thus, we have to use the "joins" to help us.
+
+We can use `left_join()` to combine the income and life expectancy data:
+
+```{r}
+left_join(x = gap_income_au,
+          y = gap_life_au,
+          by = c("country", "year"))
+```
+
+What about adding `co2` data to the income and life expectancy combined data?
+
+We can use another join:
+
+```{r}
+left_join(x = gap_income_au,
+          y = gap_life_au,
+          by = c("country", "year")) %>% 
+  left_join(gap_co2_au,
+            by = c("country", "year"))
+```
+
+Notice that we get some missing values for `co2`, since we don't have `co2` values for 2015 and beyond.
+
+So, we can combine the data together like so:
+
+```{r}
+gap_au <- left_join(x = gap_income_au,
+                    y = gap_life_au,
+                    by = c("country", "year")) %>% 
+  left_join(gap_co2_au,
+            by = c("country", "year"))
+
+gap_au
+```
+
+With the combined data, we can now make a plot!
+
+```{r}
+ggplot(gap_au,
+       aes(x = gdp,
+           y = life_expectancy)) + 
+  geom_point()
+```
+
+### Section B
+
+#### 1. Explain why the following two joins produce different results:
+
+```{r}
+left_join(gap_co2_au,
+          gap_life_au)
+
+left_join(gap_life_au,
+          gap_co2_au)
+```
+
+
+In the first line of the code chunk above, we perform a left join between `gap_co2_au` and `gap_life_au.` A left join will use `gap_co2_au` as the master table to which the `gap_life_au` records are joined. So, because `gap_co_2` only has 3 rows, this limits the number of rows that `gap_life_au` can be joined to. Only the rows in `gap_life_au` from the years 2012, 2013 and 2014 will be able to be joined. 
+
+In the second line, `gap_life_au` is the master to which `gap_co2_au` will be joined. In this case, all rows from `gap_life_au` are used, and the three matches from `gap_co2_au` are joined to this for years 2012, 2013, 2014, and the rest of the unmatched fields become `NA`.
+
+#### 2. What happens when you add data from New Zealand into the mix? Can you produce a dataset that has all data on gdp, life expectancy, and CO2, for both Australia and New Zealand, using the joining techniques you've just learnt?
+
+```{r}
+gap <- left_join(x = gap_income,
+                 y = gap_life,
+                 by = c("country", "year")) %>% 
+                left_join(gap_co2,
+                        by = c("country", "year"))
+
+gap
+```
+
+## ✈️ Exercise 6B: Mapping data with joins (flights movements)
+
+### Data Preparation
+
+```{r load-plane}
+plane_N4YRAA <- read_csv("data/plane_N4YRAA.csv")
+
+glimpse(plane_N4YRAA)
+```
+
+Load the airline travel and airport location data.
+
+```{r read-airports}
+airport_raw <- read_csv("data/airports.csv")
+
+airport_raw %>%
+  select(AIRPORT, 
+         LATITUDE, 
+         LONGITUDE, 
+         AIRPORT_STATE_NAME) %>%
+  glimpse()
+
+```
+
+The key is the airport's three letter code, 
+
+- this is used in the `ORIGIN` and `DEST` column of the `plane_N4YRAA` table  
+- and `AIRPORT` is in the `airport` table  
+
+First, we will tidy up the `airport_raw` data and create `airport_new`
+
+```{r tidy-airport}
+unique(plane_N4YRAA$ORIGIN)
+
+airport_new <- airport_raw %>%
+  select(AIRPORT, 
+         LATITUDE, 
+         LONGITUDE, 
+         AIRPORT_IS_LATEST, 
+         DISPLAY_AIRPORT_NAME) %>%
+  filter(AIRPORT_IS_LATEST == 1) %>%  # get the rows where airport_is_latest equals 1
+  select(-AIRPORT_IS_LATEST)          # now hide that column because we don't need it anymore and want to clean up the dataset
+
+airport_new
+```
+
+`plane_N4YRAA` has fewer airports than `airports`
+
+- We will only keep the rows of the `airport` table, for those that appear in the `plane_N4YRAA` table by doing a left join.
+
+```{r tidy-flight}
+N4YRAA_latlon <- left_join(plane_N4YRAA,
+                           airport_new,
+                           by = c("ORIGIN" = "AIRPORT")
+) %>%
+  rename(
+    "ORIGIN_LATITUDE" = "LATITUDE",
+    "ORIGIN_LONGITUDE" = "LONGITUDE"
+  )
+
+N4YRAA_latlon %>%
+  select(
+    ORIGIN,
+    ORIGIN_LATITUDE,
+    ORIGIN_LONGITUDE,
+    DISPLAY_AIRPORT_NAME
+  )
+```
+
+The variables `ORIGIN_LATITUDE`, `ORIGIN_LONGITUDE`, `DISPLAY_AIRPORT_NAME` are added to corresponding row in the `plane_N4YRAA` table.
+
+Add destination coordinates
+
+- Added spatial coordinates (latitude, longitude) for the origin airport
+- Same needs to be done for the destination airport
+
+Now we combine the current data with some new data to add the destinations.
+
+```{r}
+N4YRAA_latlon_dest <- left_join(
+  N4YRAA_latlon,
+  airport_new,
+  by = c("DEST" = "AIRPORT" )
+) %>%
+  rename(
+    "DEST_LATITUDE" = "LATITUDE",
+    "DEST_LONGITUDE" = "LONGITUDE"
+  )
+
+N4YRAA_latlon_dest <- N4YRAA_latlon_dest %>% arrange(FL_DATE, DEP_TIME)
+
+# Cleanup
+rm(airport)
+```
+
+
+## 🛫 Exercise 6C: Data wrangling with joins 🛬
+
+### Section A: Data wrangling
+
+Load the nycflights data.
+
+```{r}
+library(nycflights13)
+```
+
+Run `?airports` to find out more about the `airports` data. Then, look at the lecture notes to figure out the relationship between `flight` data and `airports` data.
+
+The code below filters for the rows with the airport code '`LGA`'
+
+```{r}
+airports %>% filter(faa == "LGA")
+```
+
+```{r}
+delta_a <- flights %>%
+  filter(carrier == "DL", origin == "LGA", month == 8) %>%
+  left_join(airports, 
+            by = c("dest" = "faa")) %>%
+  mutate(orig_lon = -73.9, 
+         orig_lat = 40.8)
+```
+
+The code above does the following: 
+
+- Step 1: Get flights with the Delta carrier 'DL', that started at the airport code 'LGA' in August
+- Step 2: Then join this with `airports` based on the destination code
+- Step 3: Create two new columns, with longitude and latitude of the origin airport (LGA)
+
+The code below plots the delay in departure time relating to different wind direction (in degrees) for flights originating from 'LGA', where the wind speed was over 25mph. 
+
+```{r}
+flgt_weather_a <- flights %>%
+  filter(origin == "LGA") %>%
+  left_join(weather, by = c("origin", "time_hour")) %>%
+  filter(wind_speed > 25)
+
+ggplot(flgt_weather_a, 
+       aes(x = wind_dir, 
+           y = dep_delay)) +
+   geom_point(alpha=0.5) 
+```
+
+### Section B: Complete these exercises about the `nycflights13` data using wrangling operations, an appropriate join, and a plot. 
+
+##### 1. Filter the flights data to contain just Delta flights ('DL'), for August.
+
+```{r}
+delta_b <- flights %>%
+  filter(carrier == "DL", month == 8)
+```
+
+#### 2. Add the airport locations (`lat`, `long`) of the _origin_ and _destination_ to the flights data. Adding coordinates would be useful if you were asked to plot the flights on a map, but we won't do this today.
+
+```{r}
+flights_latlon <- left_join(delta_b,
+                            airports,
+                            by = c("origin" = "faa")) %>%
+  rename("origin_latitude" = "lat",
+         "origin_longitude" = "lon") 
+
+flights_latlon <- left_join(flights_latlon,
+                            airports,
+                            by  = c("dest" = "faa")) %>%
+  rename("dest_latitude" = "lat",
+         "dest_longitude" = "lon")
+
+
+# Or you could do this in one move, by piping the first join into the second:
+
+flights_latlon <- left_join(delta_b,
+                            airports,
+                            by = c("origin" = "faa")
+                            ) %>%
+  rename(
+    "origin_latitude" = "lat",
+    "origin_longitude" = "lon"
+  ) %>%
+  left_join(
+    airports,
+    by = c("dest" = "faa" )
+  ) %>%
+  rename(
+    "dest_latitude" = "lat",
+    "dest_longitude" = "lon"
+  )
+
+
+```
+
+### Section C. Let's look at how cross winds affect airport operations. 
+
+#### 1. Join the `weather` data to the `flights` data
+
+```{r}
+
+flgt_weather_c <- flights %>%
+  left_join(weather, by = c("origin", "time_hour")) 
+
+```
+
+
+#### 2. Filter by origin airport 'EWR' and wind speeds higher than 20mph
+
+```{r}
+flgt_weath_ewr <- flgt_weather_c %>%
+  filter(origin == "EWR", wind_speed > 20) 
+
+```
+
+#### 3. Plot flight departure delay against wind direction
+
+Does wind direction (when wind speed is stronger) affect operations at the airport? 
+
+
+```{r}
+ggplot(flgt_weath_ewr, 
+       aes(x = wind_dir, 
+           y = dep_delay)) +
+   geom_point(alpha = 0.5) 
+
+```
+
+When the wind is reasonably strong (>20mph), and if it is blowing across the runway, there may be some delays.
