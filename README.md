@@ -2,7 +2,7 @@
 
 The extensions including `coatless/webr` and `monash` are tweaked. Please copy those extensions as is.
 
-## Features that could be useful for your slides
+There are some features that could be useful for your slides
 
 ## Clock
 
