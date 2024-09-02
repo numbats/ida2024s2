@@ -67,3 +67,7 @@ You can set `editor-max-height` for individual code chunks or globally. The valu
 
 You can set `autorun` to `true` for individual code chunks or globally.
 
+### 7. Why does some webR code produce no output, even when run manually?
+
+This might be because you set `message` and `warning` to false, which suppresses all messages, including warnings and errors. If an error occurs, the code cannot be executed.
+
