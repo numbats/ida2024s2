@@ -43,7 +43,7 @@ The `setup` context type runs the code in the background but may take up space d
 ::: {display: none}
 :::
 ```
-### 3. How do I adjust the font size of the webR console?
+### 3. How do I adjust the font size of the webR code?
 
 To adjust the font size of webR code chunks, you can set the `editor-font-scale` individually for each chunk or apply it globally with:
 
@@ -54,3 +54,16 @@ webr:
 ```
 
 The default value for Quarto slides is 0.5. This setting scales the font size relative to the page font size.
+
+### 4. How can I disable editing in webR code chunks?
+
+Set `read-only` to `true` for the code chunk.
+
+### 5. How can I control the maximum height of the webR editor to prevent it from growing indefinitely? 
+
+You can set `editor-max-height` for individual code chunks or globally. The value is specified in pixels.
+
+### 6. How can I automatically run the webR code chunk when the HTML file opens?
+
+You can set `autorun` to `true` for individual code chunks or globally.
+
