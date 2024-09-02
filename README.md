@@ -6,7 +6,7 @@ There are some features that could be useful for your slides
 
 ## Image as icon
 
-Display a PNG file as an icon. Use it as a class of an `<img>` element.
+To display an image file as an icon, use it as a class for an `<img>` element. This is useful for including images in titles or text.
 
 ```css
 .png-icon {
