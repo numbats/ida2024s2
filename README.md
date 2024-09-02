@@ -129,4 +129,11 @@ lapply(1:100, rnorm)
 :::
 ~~~
 
+### 11. Can I customize the syntax highlighting in the `quarto-webr` code editor?
 
+Yes, it's possible, but it's not straightforward. For more details, see the [Monarch documentation](https://microsoft.github.io/monaco-editor/monarch.html).
+
+
+### Can I customize the syntax highlighting in the `quarto-webr` code output?
+
+Yes, you can use existing tools like `prismjs` to modify the `<code>` elements directly.
