@@ -127,27 +127,6 @@ lapply(1:100, rnorm)
 :::
 ~~~
 
-### 10. How do I control the height of the code output?
-
-To control the height of the `quarto-webr` output, you need to modify the CSS for the output code area:
-
-```css
-.h300-webr-pre-output .qwebr-output-code-area pre {
-  max-height: 500px !important;
-}
-```
-
-Wrap the `quarto-webr` code chunk with this class to limit its maximum height:
-
-~~~
-::: {.h300-webr-pre-output}
-
-```{webr-r}
-lapply(1:100, rnorm)
-```
-
-:::
-~~~
 
 ### 11. Can I customize the syntax highlighting in the `quarto-webr` code editor?
 
