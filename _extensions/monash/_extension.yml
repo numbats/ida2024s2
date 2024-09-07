@@ -6,7 +6,7 @@ contributes:
   formats:
     revealjs:
       theme: assets/monash.scss
-      css: [assets/tachyons-addon.css, assets/custom.css]
+      css: [assets/custom.css]
       include-after-body: assets/after-body.html
       include-in-header: assets/header.html
       slide-number: true
