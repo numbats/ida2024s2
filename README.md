@@ -11,7 +11,7 @@ To display an image file as an icon, use it as a class for an `<img>` element. T
 ```css
 .png-icon {
   height:1em;
-  width:1.13em;
+  width:1em;
   vertical-align:-0.125em;
   margin-left:auto;
   margin-right:auto;
