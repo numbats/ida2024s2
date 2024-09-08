@@ -1,0 +1,1182 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 8: Web Scraping, Projects and Functions"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 8 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'rvest', 'polite']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+```
+
+---
+
+## `r fontawesome::fa("lightbulb")` Recap
+
+- What is relational data?
+- How to combine different data sets for data analysis?
+- Joins and Keys
+- Different types of joins
+- Stacking data frames
+- Working with Excel files
+
+---
+
+## `r fontawesome::fa("sitemap")` Outline
+
+1. What is web scraping?
+2. `rvest` and `polite`
+3. What is a function?
+4. File paths and RStudio projects
+
+---
+
+## Web Scraping {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("robot")` Web Scraping
+
+An increasing amount of data is available on the web, but they are often provided in an **unstructured format**. 
+
+Copying and pasting is always an option, but it’s **time-consuming and prone to errors**.
+
+```{r echo = FALSE}
+knitr::include_graphics("images/imdb-screenshot.png")
+```
+
+
+---
+
+## `r fontawesome::fa("robot")` Web Scraping
+
+**Web scraping** is the process of extracting data from websites **automatically** and **transform** it into a **structured dataset**.
+
+There are two major types of web scraping:
+
+::: {.columns}
+
+::: {.column .callout-note}
+
+## Screen Scraping
+
+Extracting data from the **HTML content** of a web page, with HTML parser or regular expression matching.
+
+:::
+
+::: {.column .callout-note}
+
+## API (application programming interface) Data Retrieval
+
+Website **offers** a set of **structured http requests** that return JSON or XML files.
+
+:::
+
+:::
+
+R provides all the essential tools needed for web scraping, along with the advantage of direct data analysis. However, other languages like Python, Perl, and Java are also effective options.
+
+---
+
+## `r fontawesome::fa("html5")` Hypertext Markup Language (HTML)
+
+
+**HTML** is the **standard markup language** for documents designed to be displayed in a **web browser**. 
+
+It defines the **content** and **layout** of web pages in a **hierarchical**, **tree-like** structure. 
+
+Here is a basic example of an HTML document:
+
+
+```html
+<html>
+  <head>
+    <title>This is a title</title>
+  </head>
+  <body>
+    <p style="font-size: 30px;">
+      ETC1010
+    </p>
+  </body>
+</html>
+
+```
+
+<!-- <div style="border: 1px solid black;"> -->
+
+<!-- <iframe srcdoc='<html> -->
+<!--   <head> -->
+<!--     <title>This is a title</title> -->
+<!--   </head> -->
+<!--   <body> -->
+<!--     <p style="font-size: 30px;"> -->
+<!--       ETC1010 -->
+<!--     </p> -->
+<!--   </body> -->
+<!-- </html>' width="100%"></iframe> -->
+
+<!-- </div> -->
+
+
+
+
+---
+
+## `r fontawesome::fa("html5")` Hypertext Markup Language (HTML)
+
+
+
+
+::: {.columns}
+
+::: {.column}
+
+An HTML document is made up of [**HTML elements**](https://developer.mozilla.org/en-US/docs/Web/HTML/Element).
+
+An HTML element consists of:
+
+- a **start tag** (e.g. `<p>`)
+- optional **attributes** (e.g. `style="..."`)
+- an **end tag** (e.g. `</p>`)
+- **contents**, which include everything between the start and end tags
+
+:::
+
+::: {.column}
+
+```html
+<html>
+  <head>
+    <title>This is a title</title>
+  </head>
+  <body>
+    <p style="font-size: 30px;">
+      ETC1010
+    </p>
+  </body>
+</html>
+```
+
+::: {.callout-tip}
+
+## There are over 100 HTML elements.
+
+- `<html>`: indicates the content is HTML code.
+- `<head>`: meta information about the document.
+- `<title>`: title of the document.
+- `<body>`: visible content of the webpage.
+- `<p>`: a paragraph/a block of text.
+
+:::
+
+
+:::
+
+:::
+
+---
+
+
+## rvest {.transition-slide .center style="text-align: center;"}
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `rvest`
+
+
+The `rvest` R package offers a suite of tools for extracting information from HTML documents:
+
+- `read_html()`: Read an HTML file.
+- `html_elements()`: Select elements from the HTML document using [**CSS selectors**](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_selectors).
+- `html_text2()`: Extract the **plain text contents** of an HTML element. 
+- `html_attrs()`: Get element **attributes**.
+- `read_html_live()`: runs a live web browser (Chrome) in the background and read an HTML file that are generated dynamically by JavaScript.
+- ...
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `read_html()`
+
+We typically start the scraping process with `read_html()`, which makes a request to the website and then reads the HTML code of the page.
+
+- Get the HTML document of IMDB top 250 movies:
+
+::: {.columns}
+
+::: {.column}
+
+```{r}
+library(rvest)
+read_html("https://www.imdb.com/chart/top/")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-tip .no-top-margin-callout}
+
+`read_html()` works for most websites but can be problematic on sites where the text we aim to extract is **dynamically generated by JavaScript**.
+
+:::
+
+:::
+
+:::
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `html_elements()`
+
+`html_elements()` finds HTML elements using [**CSS selectors**](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_selectors).
+
+It helps us select **specific parts** of the HTML file that we are interested in.
+
+- Get the `<head>` element:
+
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("head")
+```
+
+- Get the `<title>` from the `<head>` element:
+
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("head") %>%
+  html_elements("title")
+```
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `html_text2()`
+
+`html_text2()` extracts text from HTML elements.
+
+- Get the text out of the title:
+
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("head") %>%
+  html_elements("title") %>%
+  html_text2()
+```
+
+- Get the text out of all the `<p>`:
+
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("p") %>%
+  html_text2()
+```
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `html_attrs()`
+
+`html_attrs()` gets all attributes of HTML elements.
+
+::: {style="width: 100%"}
+
+- Get the attributes out of all the `<p>`:
+
+:::
+
+
+::: {.columns}
+
+::: {.column}
+
+
+
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("p") %>%
+  html_attrs()
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+The first `<p>` element has no attributes, so it returns an empty result.
+
+:::
+
+:::
+
+:::
+
+---
+
+## CSS Selector {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+## `r fontawesome::fa("css3")` CSS Selector
+
+**CSS selectors** help you **pinpoint the exact parts of a webpage** you want to scrape, such as text, images, or links.
+
+Here’s a cheatsheet to guide you:
+
+```{r echo=FALSE}
+data.frame(Selector = c("element", "element element", "element > element", ".class", "#id", "[attribute]", "[attribute=value]", "element:first-child"),
+           Example = c("p", "div p", "div > p", ".title", ".name", "[class]", "[class=title]", "div:first-child"),
+           Description = c("Select all <p> elements", "Select all <p> elements inside a <div> element", "Select all <p> elements with <div> as a parent", 'Select all elements with class="title"', 'Select all elements with id="name"', 'Select all elements with a class attribute', '	Select all elements with class="title"', 'Select first child inside a <div> element')) %>%
+  kableExtra::kbl(table.attr = 'data-quarto-disable-processing="true"') %>%
+  kableExtra::kable_material(c("striped", "hover"), font_size = 35, full_width = FALSE)
+```
+
+---
+
+## <img src="images/selector_gadget.png" class="png-icon"> SelectorGadget
+
+[**SelectorGadget**](https://selectorgadget.com/)  allows you to **click on elements within a webpage** and see the **corresponding selectors that match those elements**.
+
+Install the [Chrome Extension](https://chromewebstore.google.com/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb).
+
+- *It does not work well on websites with dynamically generated content (e.g. IMDB)!*
+
+::: {.callout-tip}
+ 
+## Usage
+
+- A box will open in the bottom right of the website. Click on a page element that you would like your selector to match (it will turn green). SelectorGadget will then generate a minimal CSS selector for that element, and will highlight (yellow) everything that is matched by the selector.
+- Now click on a highlighted element to remove it from the selector (red), or click on an unhighlighted element to add it to the selector. Through this process of selection and rejection, SelectorGadget helps you come up with the appropriate CSS selector for your needs.
+
+:::
+
+---
+
+## `r fontawesome::fa("chrome")` Google Chrome DevTools
+
+::: {.columns}
+
+::: {.column}
+
+1. You can **right-click** on any element on a webpage and choose "Inspect" to open **DevTools**.
+
+2. In DevTools, click on the **top-left icon** that looks like a square with a cursor inside. 
+
+3. **Hover over** any part of the webpage, a tooltip will appear, showing the CSS selector.
+
+:::
+
+::: {.column}
+
+```{r echo=FALSE}
+knitr::include_graphics("images/devtools.png")
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("film")` Top 250 Movies on IMDB
+
+Let's get titles of top 250 movies. 
+
+Each title is in an `<h3>` element with the class `ipc-title__text`.
+ 
+::: {.columns}
+ 
+::: {.column} 
+ 
+```{r}
+read_html("https://www.imdb.com/chart/top/") %>%
+  html_elements("h3.ipc-title__text") %>%
+  html_text2() -> raw_title
+raw_title
+```
+
+:::
+
+::: {.column .callout-note .no-top-margin-callout}
+
+There are only 25 movies because the content on the webpage is **dynamically generated by JavaScript**.
+
+:::
+
+:::
+
+
+
+---
+
+## <img src="images/rvest.png" class="png-icon"> `read_html_live()`
+
+
+
+`read_html_live()` runs a **live web browser (Chrome)** in the background. 
+
+It allows you to **access dynamically generated HTML elements** and **interact with the live page**, such as clicking buttons or typing in forms.
+
+::: {.columns}
+
+
+::: {.column}
+
+
+```{r}
+read_html_live("https://www.imdb.com/chart/top/") %>%
+  html_elements("h3.ipc-title__text") %>%
+  html_text2() -> raw_title
+raw_title
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+Since we're using a headless browser to access the website, it will **execute the JavaScript and load all the dynamic content**, similar to how you would see it when visiting the site with a standard browser.
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("broom")` Parsing the Raw Data
+
+::: {style="display: none"}
+
+```{webr-r}
+#| context: setup
+raw_title <- c("IMDb Charts", "1. The Shawshank Redemption", "2. The Godfather", "3. The Dark Knight", "4. The Godfather Part II", "5. 12 Angry Men", "6. Schindler's List", "7. The Lord of the Rings: The Return of the King", "8. Pulp Fiction", "9. The Lord of the Rings: The Fellowship of the Ring", "10. The Good, the Bad and the Ugly", "11. Forrest Gump", "12. The Lord of the Rings: The Two Towers", "13. Fight Club", "14. Inception", "15. Star Wars: Episode V - The Empire Strikes Back", "16. The Matrix", "17. GoodFellas", "18. One Flew Over the Cuckoo's Nest", "19. Interstellar", "20. Seven", "21. It's a Wonderful Life", "22. Seven Samurai", "23. The Silence of the Lambs", "24. Saving Private Ryan", "25. City of God", "26. Life Is Beautiful", "27. The Green Mile", "28. Terminator 2: Judgment Day", "29. Star Wars: Episode IV - A New Hope", "30. Back to the Future", "31. Spirited Away", "32. The Pianist", "33. Parasite", "34. Psycho", "35. Gladiator", "36. The Lion King", "37. Spider-Man: Across the Spider-Verse", "38. The Departed", "39. Whiplash", "40. American History X", "41. Leon", "42. Grave of the Fireflies", "43. The Prestige", "44. Harakiri", "45. Dune: Part Two", "46. The Usual Suspects", "47. Casablanca", "48. Untouchable", "49. Cinema Paradiso", "50. Modern Times", "51. Alien", "52. Rear Window", "53. Once Upon a Time in the West", "54. City Lights", "55. Django Unchained", "56. Apocalypse Now", "57. Memento", "58. WALL·E", "59. Raiders of the Lost Ark", "60. 12th Fail", "61. The Lives of Others", "62. Sunset Blvd.", "63. Avengers: Infinity War", "64. Paths of Glory", "65. Spider-Man: Into the Spider-Verse", "66. Witness for the Prosecution", "67. The Shining", "68. The Great Dictator", "69. Aliens", "70. Inglourious Basterds", "71. The Dark Knight Rises", "72. Coco", "73. Amadeus", "74. Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb", "75. Toy Story", "76. Oldboy", "77. American Beauty", "78. Avengers: Endgame", "79. Braveheart", "80. Das Boot", "81. Good Will Hunting", "82. Princess Mononoke", "83. Joker", "84. Your Name.", "85. High and Low", "86. 3 Idiots", "87. Once Upon a Time in America", "88. Singin' in the Rain", "89. Capernaum", "90. Come and See", "91. Requiem for a Dream", "92. Toy Story 3", "93. Star Wars: Episode VI - Return of the Jedi", "94. Eternal Sunshine of the Spotless Mind", "95. The Hunt", "96. 2001: A Space Odyssey", "97. Ikiru", "98. Reservoir Dogs", "99. Lawrence of Arabia", "100. The Apartment", "101. Incendies", "102. Oppenheimer", "103. North by Northwest", "104. Scarface", "105. Citizen Kane", "106. Double Indemnity", "107. M", "108. Vertigo", "109. Full Metal Jacket", "110. Heat", "111. Amélie", "112. Up", "113. A Clockwork Orange", "114. To Kill a Mockingbird", "115. A Separation", "116. The Sting", "117. Die Hard", "118. Indiana Jones and the Last Crusade", "119. Like Stars on Earth", "120. Metropolis", "121. Snatch", "122. 1917", "123. L.A. Confidential", "124. Bicycle Thieves", "125. Hamilton", "126. Taxi Driver", "127. Downfall", "128. Dangal", "129. Batman Begins", "130. For a Few Dollars More", "131. The Wolf of Wall Street", "132. Green Book", "133. Some Like It Hot", "134. The Kid", "135. Judgment at Nuremberg", "136. The Truman Show", "137. The Father", "138. All About Eve", "139. Shutter Island", "140. There Will Be Blood", "141. Top Gun: Maverick", "142. Jurassic Park", "143. Casino", "144. Ran", "145. The Sixth Sense", "146. Pan's Labyrinth", "147. Unforgiven", "148. No Country for Old Men", "149. The Thing", "150. A Beautiful Mind", "151. Kill Bill: Vol. 1", "152. The Treasure of the Sierra Madre", "153. Yojimbo", "154. The Great Escape", "155. Monty Python and the Holy Grail", "156. Finding Nemo", "157. Prisoners", "158. Howl's Moving Castle", "159. Rashomon", "160. The Elephant Man", "161. Dial M for Murder", "162. Chinatown", "163. Gone with the Wind", "164. Lock, Stock and Two Smoking Barrels", "165. The Secret in Their Eyes", "166. Inside Out", "167. V for Vendetta", "168. Raging Bull", "169. Three Billboards Outside Ebbing, Missouri", "170. Trainspotting", "171. The Bridge on the River Kwai", "172. Klaus", "173. Catch Me If You Can", "174. Fargo", "175. Warrior", "176. Spider-Man: No Way Home", "177. Gran Torino", "178. Harry Potter and the Deathly Hallows: Part 2", "179. Million Dollar Baby", "180. My Neighbour Totoro", "181. Mad Max: Fury Road", "182. Children of Heaven", "183. Ben-Hur", "184. 12 Years a Slave", "185. Before Sunrise", "186. Blade Runner", "187. Barry Lyndon", "188. The Grand Budapest Hotel", "189. Hacksaw Ridge", "190. Gone Girl", "191. Dead Poets Society", "192. Maharaja", "193. Memories of Murder", "194. In the Name of the Father", "195. The Gold Rush", "196. Monsters, Inc.", "197. Wild Tales", "198. The Deer Hunter", "199. The General", "200. Jaws", "201. Sherlock Jr.", "202. How to Train Your Dragon", "203. Ratatouille", "204. On the Waterfront", "205. Mary and Max", "206. The Wages of Fear", "207. The Third Man", "208. Wild Strawberries", "209. Le Mans '66", "210. Mr. Smith Goes to Washington", "211. Tokyo Story", "212. Logan", "213. Rocky", "214. The Big Lebowski", "215. The Seventh Seal", "216. Room", "217. Spotlight", "218. The Terminator", "219. Hotel Rwanda", "220. Platoon", "221. La haine", "222. Pirates of the Caribbean: The Curse of the Black Pearl", "223. Before Sunset", "224. The Passion of Joan of Arc", "225. Jai Bhim", "226. The Best Years of Our Lives", "227. The Exorcist", "228. Rush", "229. The Incredibles", "230. Network", "231. The Wizard of Oz", "232. Stand by Me", "233. Hachi: A Dog's Tale", "234. The Sound of Music", "235. My Father and My Son", "236. The Handmaiden", "237. To Be or Not to Be", "238. Into the Wild", "239. The Battle of Algiers", "240. Groundhog Day", "241. The Grapes of Wrath", "242. The Iron Giant", "243. Amores perros", "244. Rebecca", "245. The Help", "246. Cool Hand Luke", "247. It Happened One Night", "248. Paris, Texas", "249. Aladdin", "250. Scent of a Woman", "You have rated", "More to explore", "Charts", "Top Box Office (US)", "Most Popular Movies", "Top Rated English Movies", "Most Popular TV Shows", "Top 250 TV Shows", "Lowest Rated Movies", "Most Popular Celebs", "Movie News", "Top Rated Movies by Genre", "Recently viewed")
+```
+
+:::
+
+::: {.columns}
+
+::: {.column}
+
+1. Find all real titles by matching strings that **start with** (`^`) a **digit** (`\d`) using a regular expression.
+
+2. Match the pattern of **starting digit(s), followed by a dot and a space**, and replace them with an empty string.
+
+Regular expressions are a concise and flexible tool for describing patterns in strings. [See here for more](https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html).
+
+Talk much more about these next week.
+
+:::
+
+::: {.column}
+
+```{webr-r}
+#| editor-max-height: 400
+library(stringr)
+real_title <- str_subset(raw_title, "^\\d")
+str_replace(real_title, "^\\d+\\. ", "")
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("gears")` Complete Workflow to Get Title, Rating and Year
+
+```{r}
+doc <- read_html_live("https://www.imdb.com/chart/top/")
+title <- doc %>%
+  html_elements("h3.ipc-title__text") %>%
+  html_text2() %>%
+  str_subset("^\\d") %>%
+  str_replace("^\\d+\\. ", "")
+rating <- doc %>%
+  html_elements("span.ipc-rating-star--rating") %>%
+  html_text2()
+year <- doc %>%
+  html_elements(".sc-b189961a-7.btCcOY.cli-title-metadata > :first-child") %>%
+  html_text2()
+
+tibble(title, rating, year)
+```
+
+---
+
+## polite {.transition-slide .center style="text-align: center;"}
+
+---
+
+## <img src="images/polite.png" class="png-icon"> Responsible Web Scraping
+
+The `polite` package helps ensure responsible web scraping by following **polite practices**: 
+
+- introducing yourself
+- **asking for permission**
+- **scraping slowly**
+- not making repeated requests
+
+
+
+---
+
+## <img src="images/polite.png" class="png-icon"> Responsible Web Scraping
+
+Use `bow()` to introduce yourself to the website and check the `robots.txt` file to get permission to scrape.
+
+```{r}
+library(polite)
+session <- bow("http://www.imdb.com")
+session
+```
+
+`scrape()` works similarly to `read_html()`.
+
+```{r}
+scrape(session)
+```
+
+---
+
+## `r fontawesome::fa("file-code")` Ohter Common Formats: `JSON`
+
+Data are sometimes stored as **JavaScript Object Notation** (`JSON`), which requires special unpacking by the `jsonlite` package.
+
+```{r}
+jsonlite::fromJSON(
+'[{
+    "Name": "Mario",
+    "Age": 32,
+    "Occupation": "Plumber"
+  },
+  {
+    "Name": "Peach",
+    "Age": 21,
+    "Occupation": "Princess"
+  },
+  {},
+  {
+    "Name": "Bowser",
+    "Occupation": "Koopa"
+  }]')
+```
+
+
+---
+
+## `r fontawesome::fa("face-frown-open")` Potential Challenges with Web Scraping
+
+- Unreliable formatting at the source
+- Data broken into many pages
+- Data arriving in multiple excel file formats
+- ...
+- We will come back to this after we learn about functions in today's class!
+
+---
+
+## `r fontawesome::fa("wpexplorer")` Further Exploring
+
+People write R packages to access online data! Check out: 
+
+- [cricinfo by Sayani Gupta and Rob Hyndman](https://docs.ropensci.org/cricketdata/)
+- [rwalkr by Earo Wang](https://github.com/earowang/rwalkr)
+- [fitzRoy for AFL data](https://github.com/jimmyday12/fitzRoy/)
+- [Top 40 lists of R packages by Joe Rickert](https://rviews.rstudio.com/2019/07/24/june-2019-top-40-r-packages/)
+
+---
+
+## Let's have a break! {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Function {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("code")` Function
+
+A function is **a block of organized, reusable code that performs a specific task**. 
+
+Read [this introduction to functions](https://r4ds.had.co.nz/functions.html).
+
+Here is an example:
+
+::: {.columns}
+
+::: {.column}
+
+```{webr-r}
+#| editor-max-height: 400
+concatenate <- function(x, y = "xyz") {
+  paste0(x, y)
+}
+
+concatenate("abc", "def")
+concatenate("abc")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+## Function Components
+
+- Formals: the list of arguments which controls how you can call the function
+- Body: the code inside the function
+
+:::
+
+:::
+
+:::
+---
+
+## `r fontawesome::fa("code")` Why Functions?
+
+**Automate common tasks** in a powerful and general way:
+
+- You can give a function an **evocative name** that makes your code easier to understand.
+
+- As requirements change, you only need to update code in one place, instead of many.
+
+- You eliminate the chance of **making incidental mistakes when you copy and paste** (i.e. updating a variable name in one place, but not in another).
+
+- If you need to do the same thing more than twice in an analysis, you should write a function for it.
+
+---
+
+## `r fontawesome::fa("robot")` Web Scraping For TV Series
+
+We want to find out how many episodes a TV series listed on IMDb has.
+
+```{r}
+stranger_things <- bow("http://www.imdb.com/title/tt4574334/") %>%
+  scrape()
+the_last_of_us <- bow("https://www.imdb.com/title/tt3581920") %>%
+  scrape()
+```
+
+
+```{r echo=FALSE}
+knitr::include_graphics("images/episode_num.png")
+```
+
+
+## `r fontawesome::fa("robot")` How Many Episodes in TV Series?
+
+::: {.columns}
+
+::: {.column}
+
+How Many Episodes in Stranger Things?
+
+There are multiple `<span>` elements with the class `ipc-title__subtext`. 
+
+We need the first one.
+
+```r
+stranger_things %>%
+  html_elements("span.ipc-title__subtext") %>%
+  html_text2() %>%
+  .[1] %>%
+  as.integer()
+```
+
+```{r echo=FALSE}
+read_html("http://www.imdb.com/title/tt4574334/") %>%
+  html_elements("span.ipc-title__subtext") %>%
+  html_text2() %>%
+  .[1] %>%
+  as.integer()
+```
+
+:::
+
+::: {.column}
+
+How Many Episodes in The Last of Us?
+
+The webpage layout is the same for TV series, so **the code is nearly identical**.
+
+```r
+the_last_of_us %>%
+  html_elements("span.ipc-title__subtext") %>%
+  html_text2() %>%
+  .[1] %>%
+  as.integer()
+```
+
+```{r echo=FALSE}
+read_html("http://www.imdb.com/title/tt3581920/") %>%
+  html_elements("span.ipc-title__subtext") %>%
+  html_text2() %>%
+  .[1] %>%
+  as.integer()
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("code")` When Should You Write A Function?
+
+
+- Whenever you’ve **copied and pasted a block of code more than
+twice**.
+- When you want to **clearly express** some set of actions
+- When you want to do **modular coding**.
+- There are many other reasons as well!
+
+---
+
+## `r fontawesome::fa("code")` Let's Make A Function to Get the Number of Episodes
+
+1. We first need to pick a **short but informative name, preferably a verb**.
+
+```r
+get_episode_number <- function(...) {
+  ...
+}
+```
+
+2. List inputs, or **arguments**, to the function inside function.
+
+```r
+get_episode_number <- function(series_doc) {
+  ...
+}
+```
+
+3. Place the code you have developed in **body of the function** (`{}`).
+
+```r
+get_episode_number <- function(series_doc) {
+  series_doc %>%
+    html_elements("span.ipc-title__subtext") %>%
+    html_text2() %>%
+    .[1] %>%
+    as.integer()
+}
+```
+
+---
+
+## `r fontawesome::fa("code")` Check Your Function
+
+```{r echo = FALSE}
+get_episode_number <- function(url) {
+  read_html(url) %>%
+    html_elements("span.ipc-title__subtext") %>%
+    html_text2() %>%
+    .[1] %>%
+    as.integer()
+}
+```
+
+- Number of episodes in The Walking Dead
+
+```r
+the_walking_dead <- bow("http://www.imdb.com/title/tt1520211") %>%
+  scrape()
+get_episode_number(the_walking_dead)
+```
+
+```{r echo=FALSE}
+get_episode_number("http://www.imdb.com/title/tt1520211")
+```
+
+- Number of episodes in Breaking Bad
+
+```r
+breaking_bad <- bow("https://www.imdb.com/title/tt0903747") %>%
+  scrape()
+get_episode_number(breaking_bad)
+```
+
+```{r echo=FALSE}
+get_episode_number("https://www.imdb.com/title/tt0903747")
+```
+
+---
+
+## `r fontawesome::fa("code")` How to Update the Function to Use Page URL as Argument?
+
+We can retrieve the HTML document **within the function body**.
+
+```r
+get_episode_number <- function(series_url) {
+  series_url %>%
+    bow() %>%
+    scrape() %>%
+    html_elements("span.ipc-title__subtext") %>%
+    html_text2() %>%
+    .[1] %>%
+    as.integer()
+}
+```
+
+- Number of episodes in The Wire
+
+```{r}
+the_wire_url <- "https://www.imdb.com/title/tt0306414"
+get_episode_number(the_wire_url)
+```
+
+---
+
+## `r fontawesome::fa("code")` Let's Update the Function to Also Get TV Series Names
+
+
+::: {.columns}
+
+::: {.column}
+
+
+This function returns a `tibble`.
+
+```{r}
+get_episode_number <- function(series_url) {
+  series_doc <- series_url %>%
+    bow() %>%
+    scrape()
+  
+  eps_number <- series_doc %>%
+    html_elements("span.ipc-title__subtext") %>%
+    html_text2() %>%
+    .[1] %>%
+    as.integer()
+  
+  series_name <- series_doc %>%
+    html_elements("span.hero__primary-text") %>%
+    html_text2()
+  
+  return(tibble(name = series_name,
+                episode_number = eps_number))
+}
+```
+
+:::
+
+::: {.column}
+
+Number of episodes in The Wire
+
+```{r}
+get_episode_number(the_wire_url)
+```
+
+:::
+
+:::
+
+---
+
+
+## Automation {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("wand-sparkles")` Automation
+
+- You now have a function that **scrapes the name and episode number for TV shows given their URLs**.
+- Where can we find **a list of URLs for the top 100 most popular TV shows** on IMDb?
+
+```{r echo=FALSE}
+knitr::include_graphics("images/top_100_shows.png")
+```
+
+
+---
+
+## `r fontawesome::fa("wand-sparkles")` Automation
+
+All the TV show links are within elements that have the class `ipc-title-link-wrapper`. 
+
+We need to **extract the `href` attribute** from the `<a>` elements to obtain the URLs.
+
+Need to use `read_html_live()` because of the dynamic content.
+
+```{r}
+series_urls <- read_html_live("http://www.imdb.com/chart/tvmeter") %>%
+  html_elements("a.ipc-title-link-wrapper") %>%
+  html_attr("href") %>%
+  str_subset("title") %>%
+  paste0("http://www.imdb.com", .)
+series_urls
+```
+
+
+---
+
+## `r fontawesome::fa("wand-sparkles")` Go to Each Page, Scrape Information
+
+Programatically direct R to each page on the `series_urls` vector and run `get_episode_number()`.
+
+```{r}
+get_episode_number(series_urls[1])
+get_episode_number(series_urls[2])
+get_episode_number(series_urls[3])
+```
+
+---
+
+## `r fontawesome::fa("wand-sparkles")` Go to Each Page, Scrape Information
+
+In other words, we want to map the `get_episode_number()` function to each element of `series_urls`.
+
+This will hit the URLs **one after another**, and grab the information.
+
+`map_df()` will combine all the `tibble`s into one.
+
+```{r echo=FALSE}
+get_episode_number <- function(series_url) {
+  series_doc <- read_html(series_url)
+  
+  eps_number <- series_doc %>%
+    html_elements("span.ipc-title__subtext") %>%
+    html_text2() %>%
+    .[1] %>%
+    as.integer()
+  
+  series_name <- series_doc %>%
+    html_elements("span.hero__primary-text") %>%
+    html_text2()
+  
+  return(tibble(name = series_name,
+                episode_number = eps_number))
+}
+```
+
+```r
+map_df(series_urls, get_episode_number) %>%
+  head()
+```
+
+
+```{r echo = FALSE}
+map_df(series_urls[1:5], get_episode_number)
+```
+
+---
+
+## File Paths and Project Organization {.transition-slide .center style="text-align: center;"}
+
+ Please read this section on your own time
+
+---
+
+## `r fontawesome::fa("folder-open")` File Paths and Project Organization
+
+- It's important when you start working on your own machine that you understand **file storage hygiene**.
+- It helps prevent unexpected problems and makes you more productive
+- You'll spend less time fighting against strange file paths.
+- Not sure what a file path is? We will explain that as well!
+
+---
+
+## `r fontawesome::fa("folder-open")` What is A File Path?
+
+- This all might be a bit confusing if you don't know what a file path is.
+- A file path is: "the machine-readable directions to where files on your
+computer live."
+- So, this file path:
+
+```r
+/Users/starwars/rmd4sci-materials/demo-gapminder.Rmd
+```
+
+**Describes the location of the file** "demo-gapminder.Rmd".
+
+---
+
+## `r fontawesome::fa("folder-open")` What is A File Path?
+
+We could visualize this path:
+
+```r
+/Users/starwars/rmd4sci-materials/demo-gapminder.Rmd
+```
+
+as:
+
+```r
+users
+ └── starwars
+     └── rmd4sci-materials
+         └── demo-gapminder.Rmd
+```
+
+To read in the `gapminder.csv` file, you might need to write code
+like this:
+
+```r
+gapminder <- read_csv("/Users/starwars/Desktop/rmd4sci-materials/data/gapminder.csv"
+```
+
+**This is a problem, because this is not portable code!**
+
+
+---
+
+## `r fontawesome::fa("folder-open")` Using `setwd()`
+
+Read this [great blog post written by Jenny Bryan](https://www.tidyverse.org/articles/2017/12/workflow-vs-script/).
+
+Sometimes this is the first line of an R Script or R markdown file.
+
+```r
+setwd("c:/really/long/file/path/to/this/directory)
+```
+
+What do you think the `setwd()` code does?
+
+- **"Set my working directory to this specific working directory"**.
+
+It means that you can read in data and other things like this:
+
+```r
+data <- read_csv("data/mydata.csv")
+```
+
+Instead of
+
+```r
+data <- read_csv("c:/really/long/file/path/to/this/directory/data/mydata.csv")
+```
+
+
+---
+
+## `r fontawesome::fa("folder-open")` Using `setwd()`
+
+- This has the effect of making the file paths work in your file
+- This is a **problem** because, among other things, using `setwd()`:
+  - **Has 0% chance** of working on someone else's machine (**this includes you in >6 months**)
+  - Your file is not self-contained and portable. (Think: "What if this folder moved to /Downloads, or onto another machine?")
+- To get this to work, you need to hand edit the file path to your machine.
+- This is painful. And when you do this all the time, **it gets old, fast.**
+- `setwd()` is **banned** by CRAN in package development!
+
+---
+
+## `r fontawesome::fa("folder-open")` What is the Alternative to `setwd()`?
+
+**I highly recommend when you start on a new idea, new research
+project, paper. Anything that is new. It should start its life as an
+RStudio project.**
+
+An RStudio project helps keep related work together in the same
+place. Amongst other things, they:
+
+- Keep all your files together
+- Set the working directory to the project directory
+- Starts a new session of R
+- Restore previously edited files into the editor tabs
+- Restore other rstudio settings
+- Allow for multiple R projects open at the same time.
+
+---
+
+## `r fontawesome::fa("folder-open")` RStudio Project
+
+This helps keep you sane, because:
+
+- Your projects are each independent.
+- You can work on different projects at the same time.
+- Objects and functions you create and run from project idea won't
+impact one another.
+- You can refer to your data and other projects in a consistent way.
+
+And finally, the big one: **RStudio projects help resolve file path problems, because they
+automatically set the working directory to the location of the RStudio
+project. **
+
+## `r fontawesome::fa("folder-open")` `here`
+
+In some cases you might have many folders in your RStudio project. 
+
+To help
+navigate them appropriately, you can use the `here` package to
+provide the full path directory, in a compact way.
+
+Get the absolute path to the `data` folder:
+
+```{r}
+here::here("data")
+```
+
+Get the absolute path to the `gapminder.csv`:
+
+
+```{r}
+here::here("data", "gapminder.csv")
+```
+
+You can read the above here code as:
+In the folder `data` of the **current RStudio project**, there is a file called
+`gapminder.csv`, can you please give me the **absolute
+path** to that file?
+
+---
+
+## `r fontawesome::fa("folder-open")` `here`
+
+This is really handy for a few reasons:
+
+1. It makes things completely portable
+2. Rmarkdown/Quarto documents have a special way of looking for files, this
+helps eliminate file path pain.
+3. If you decide to not use RStudio projects, you have code that will
+work **on any machine**.
