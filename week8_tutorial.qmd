@@ -1,0 +1,458 @@
+---
+title: "ETC1010/5510 Tutorial 8"
+subtitle: "Introduction to Data Analysis"
+author: "Patrick Li"
+date: "Sep 9, 2024"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  message = FALSE, 
+  warning = FALSE,
+  error = FALSE, 
+  out.width = "70%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3)
+set.seed(6)
+filter <- dplyr::filter
+```
+
+
+## `r emo::ji("target")` Workshop Objectives
+
+- Introduction to web scraping
+- Introduction to functions
+- Using functions to perform web scraping
+
+
+## `r emo::ji("wrench")` Instructions
+
+1. In each question, you will replace '___' with your answer. Please note that the Qmd will not knit until you've answered all of the questions.
+2.  Once you have filled up all the blanks, remember to go to `knitr::opts_chunk` at the top of the document, change `eval = TRUE`, then knit the document.
+
+## Exercise 8A: Web Scraping + Data Analysis
+
+### Loading necessary packages
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(polite)
+library(here)
+```
+
+#### 1.Introduction
+
+Scrape the IMDb top movies chart, and store the movie titles, year and rank.
+
+We will use the Google extension SelectorGadget to highlight the web page elements, so you can see what the corresponding `html_elements()` parameter should be. 
+
+- Install the Chrome extension SelectorGadget:
+
+[https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb](https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb)
+
+- Open a web browser and go to: [https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/](https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/). Using the SelectorGadget extension, click on the title of a movie. It will look something like this below, where you can see ".titleColumn , a" appearing in the bottom panel. This text is what we will use below with `html_elements` to extract the movie names.
+
+- Use SelectorGadget to find the html-element used by the code chunks below for title `".titleColumn a"`, years `".secondaryInfo"`and scores `".imdbRating strong"`. This can be fiddly, and requires some **trial and error**. 
+
+#### 2. Scrape the top movies off IMDb. Note that the `html_elements()` correspond with the section of the page that we are going to extract.
+
+```{r message=FALSE}
+page <- read_html("https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/") 
+
+titles <- page %>%
+  html_elements("___") %>%
+  html_text2()
+
+years <- page %>%
+  html_elements("___") %>%
+  html_text2() %>%
+  # Remove "("
+  str_remove(___) %>%
+  # Remove ")"
+  str_remove(___) %>%
+  as.numeric()
+
+scores <- page %>%
+  html_elements("___") %>%
+  html_text2() %>%
+  as.numeric()
+  
+imdb_top_250 <- tibble(title = titles, 
+                       year = years, 
+                       score = scores)
+
+imdb_top_250
+```
+
+#### 3. Take a quick look at your data.
+
+```{r}
+___(imdb_top_250)
+```
+
+#### 4. Add a variable `rank` for the ranks of the movie.
+
+```{r}
+imdb_top_250 <- imdb_top_250 %>%
+  ___(rank = ___)
+
+imdb_top_250
+```
+
+
+#### 5. What movies produced in 1995 made the top 250 movies list?
+
+```{r}
+imdb_top_250 %>% 
+  filter(___)
+```
+
+
+#### 6. Which year has the most number of movies in the list?
+
+```{r}
+#  Hint: count by year, and sort
+imdb_top_250 %>% 
+  ___(___)
+```
+
+#### 7. Construct a scatter plot of the average yearly score for movies that made it to the top 250 list over time.
+
+```{r}
+# Find the average score for each year
+# Perhaps group by year and take the average score?
+imdb_yearly_avg_score <- imdb_top_250  %>%
+  ___(year) %>%
+  # Do some more data analysis here
+  summarise(avg_score = ___, 
+            number_per_year = ___)
+
+# Then plot this with the year on x axis, and average score on the y axis
+ggplot(data = imdb_yearly_avg_score,
+  aes(x = ___,
+      y = ___)) +
+  geom_point(aes(size = number_per_year)) +
+  geom_smooth(method = "lm")
+```
+
+#### 8. Explore another IMDb table
+
+- Top TV shows: https://web.archive.org/web/20220919144936/https://www.imdb.com/chart/toptv/
+
+Scrap the top 50 TV shows, store them in a similar format to the `imdb_top_250` data, and add the ranks.
+
+```{r}
+imdb_session <- bow("https://web.archive.org/web/20220919144936/https://www.imdb.com/chart/toptv/")
+
+imdb_data <- scrape(imdb_session)
+
+titles <- ___
+
+years <- ___
+
+scores <- ___
+
+imdb_top_tv <- tibble(title = titles, 
+                      year = years, 
+                      score = scores) %>%
+  # Get the top 50 TV shows
+  ___(___) 
+  
+
+imdb_top_tv
+
+# Add a variable for rank
+imdb_top_tv <- imdb_top_tv %>%
+  mutate(rank = row_number())
+
+imdb_top_tv
+```
+
+#### 9. What were the most popular TV shows in 2015? Hint: use `filter()` and `arrange()`.
+
+```{r}
+imdb_top_tv %>% 
+  ___(___) %>%
+  ___(___)
+```
+
+## Exercise 8B: Introduction to Functions
+
+### 1. Introduction
+
+Functions are often described as "take in some inputs and return some outputs". They can be used to automate tasks, avoid repeating codes and help abstract away the core parts of the logic.
+
+We've used functions previously. For example:
+
+- mean  
+- median  
+- min  
+- max  
+
+```{r}
+x <- 1:10
+x
+mean(x)
+median(x)
+min(x)
+max(x)
+```
+
+These functions take in some inputs, and then return some outputs.
+
+Suppose we want to calculate the difference between the minimum and maximum. We can do this:
+
+```{r}
+max(x) - min(x)
+```
+
+But we can give it a more descriptive name, and turn it into a function like:
+
+```{r}
+range_diff <- function(x){
+  max(x) - min(x)
+}
+```
+
+This then takes the same input, and gives us some output:
+
+```{r}
+range_diff(x)
+```
+
+This is one way to write a function. 
+
+### 2. Practice creating functions
+
+Using the dataset `mtcars` as an example, try the following:
+
+#### Calculate the difference between the minimum and maximum cylinders using the `range_diff` function we have created above
+
+```{r}
+# Have a look at the variables in cars
+mtcars
+
+range_diff(___)
+```
+
+
+#### Calculate the range of every column in a dataset
+
+**Use a for loop to iterate through the columns**
+
+A `for` loop in R is defined using the `for` keyword, and its basic syntax is:
+
+```r
+for (var in seq) {
+  expr
+}
+```
+
+In this structure, `seq` is an iterable object, such as a vector or list, `var` is the variable used to iterate through the sequence, and `expr` represents the code executed during each iteration.
+
+Here's an example where `i` is the loop variable, and `1:5` is a vector of length 5. During each iteration, `i` takes on the values `1`, `2`, `3`, `4`, and `5`. The `print()` function uses the current value of `i`, resulting in different output being printed with each iteration.
+
+```{r}
+for (i in 1:5) {
+  print(i)
+}
+```
+
+Similarly, when iterating through a `data.frame` or `tibble`, which are essentially a list under the hood, the loop variable represents each column, which is a vector. Therefore, the `print()` function will output a vector at each iteration. Because there are two columns in `cars`, two vectors will be printed in the example below.
+
+```{r}
+for (i in cars) {
+  print(i)
+}
+```
+
+Now try to apply the `range_diff()` function to each column of `mtcars` using a for loop.
+
+```{r}
+for (___ in mtcars) {
+  ___(___)
+}
+```
+
+**Functional programming**
+
+In R, we can use functional programming tools to apply a function directly to each element of an iterable object. For instance, the base R function `lapply()` takes an iterable object and a function, returning a list of results after applying the function to each element. In the example below, we use an anonymous function on each element of the vector `1:5`. This function takes a value and adds one to it. As a result, `lapply()` returns a list where each element is one greater than the corresponding element in the original vector.
+
+```{r}
+lapply(1:5, function(x) x + 1)
+```
+
+`map()` is a functional programming tool from the `purrr` package with a similar syntax to `lapply()` but offers more flexibility and power. For more details, check out the [purrr cheat sheet](https://github.com/rstudio/cheatsheets/blob/main/purrr.pdf).
+
+In `map()`, an anonymous function can be defined using the formula notation `~`. The expression `~.x + 1` defines the function body, where `.x` represents the input variable. This is equivalent to writing `function(x) x + 1` in `map()`.
+
+```{r}
+map(1:5, ~.x + 1)
+```
+
+You can also use regular functions with both `lapply()` and `map()`. In the following example, each function call produces a list of three elements, where the first element is of length 1, the second is of length 2, and the third is of length 3. This occurs because `rnorm()` is called with inputs `1`, `2`, and `3`, generating random numbers of the specified lengths.
+
+```{r}
+lapply(1:3, rnorm)
+map(1:3, rnorm)
+```
+
+Now try to use `lapply()` or `map()` to apply `range_diff()` on each column of `mtcars`.
+
+
+```{r}
+___(mtcars, range_diff)
+```
+
+Notice that `map_dbl()` can convert the resulting list to a numeric vector if all elements in the list are numeric. This function ensures that the output is a vector of numbers. Try it out yourself.
+
+```{r}
+___(mtcars, range_diff)
+```
+
+
+#### Create your own function to calculate the average number of cylinders without using `mean()`
+
+```{r}
+my_mean <- function(___){
+   ___
+} 
+
+___(mtcars$cyl)
+
+# Compare with the real mean function
+mean(mtcars$cyl)
+
+```
+
+#### Calculate the mean of every column in `mtcars` using the function you created in the last question
+
+```{r}
+___(mtcars, ___)
+```
+
+## Exercise 8C: Automating scraping with functions
+
+#### 1. Have a look at the three most popular tv shows by scraping the list of most popular TV shows on IMDb: https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/tvmeter/.
+
+The `html_table()` function helps us to extract information from the chart, but the table is quite messy.
+
+```{r}
+tv_url <- "https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/tvmeter/"
+tv_data <- bow(tv_url) %>% scrape()
+
+tv_tables <- tv_data %>%
+  html_table()
+```
+
+Note that the data is in a list and there are 2 empty columns! 🤯 To extract the data, we need to extract the second element of a list.
+
+```{r}
+# Get the clean names
+library(janitor) 
+
+# Extract the second element of the list
+tv_list <- tv_tables___%>%
+  clean_names() %>%
+  select(-x,
+         -x_2,
+         -your_rating) %>%
+  # Extract out year
+  ___(rank_title,
+      into = c("title", "year"),
+      sep = "___") %>%
+  # Extract number from year
+  ___(year = ___(year)) 
+
+tv_list
+
+```
+
+
+#### 2. Now, we want to find out more information about each show. So we're going to make a function to get the title and genre. Let's first do this for the show "Game of Thrones" from IMDb.
+
+We'll create a generic function, and pass in the URL for "Game of Thrones". This way, we can use the same code to get info about any show we want.
+
+```{r}
+got_url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt0944947/"  # Game of thrones URL
+
+scrape_show_info <- function(x){
+  
+  show <- bow(x) %>% scrape()
+  
+  title <- show %>%
+    html_elements(___) %>%
+    html_text2() 
+
+  genres <- show %>%
+    html_elements(___) %>%
+    html_text2() %>%
+    # Put all genres in the format "XXX, XXX, XXX"
+    paste(collapse = ", ")
+  
+  tibble(title = title, genres = genres)
+}
+
+___(got_url)
+```
+
+#### 3. Reuse your `scrape_show_info()` function to get the title and genre for the three most popular TV shows listed on https://web.archive.org/web/20220919175414/https://www.imdb.com/chart/tvmeter.
+
+Hint: An easy way to find the URL you can click on the show from the IMDB website, and use the URL string after the title part for example: 'https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt1312171/'
+
+```{r}
+url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt1312171/"
+scrape_show_info(url)
+
+url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt4052886/"
+scrape_show_info(url)
+
+url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt6905686/"
+scrape_show_info(url)
+
+```
+
+#### 4. What you did in the last question was pretty manual. Rather than looking up the show URL manually, there's a better way we could do this automatically by scraping the list of shows and extracting the URLs. Then we can use our `scrape_show_info()` function to obtain information about the shows.
+
+```{r}
+urls <- bow("https://web.archive.org/web/20220919175414/http://www.imdb.com/chart/tvmeter") %>% 
+  ___ %>% 
+  html_elements(".titleColumn a") %>%
+  # The link is in the attribute `href`
+  ___("href") %>%
+  # Recover the URL
+  paste("https://web.archive.org", ., sep = "")
+```
+
+Now, scrape the first URL from our `urls` vector.
+
+```{r}
+# Have a look at what's in the urls
+urls
+
+show_info <- ___(urls[1])
+
+show_info
+```
+
+#### 6. Let's use the `map_df()` function to put the results of the `scrape_show_info()` for the first 10 `urls` into a dataframe.
+
+```{r}
+# Just pick 10, because this takes ages to run with the full dataset. 
+show_info <- ___(urls[1:10], scrape_show_info) 
+
+show_info
+
+```
+
+
+🥵 Note: Web scraping isn't always straightforward! 
