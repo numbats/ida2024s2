@@ -1,0 +1,894 @@
+---
+title: "ETC1010/5510 Tutorial 9"
+subtitle: "Introduction to Data Analysis"
+author: "Patrick Li"
+date: "Sep 15, 2024"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  message = FALSE, 
+  warning = FALSE,
+  error = FALSE, 
+  out.width = "70%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3)
+set.seed(6)
+filter <- dplyr::filter
+```
+
+
+## `r emo::ji("target")` Workshop Objectives
+
+- Representing pieces of text as a tidy data object
+- Remove uninteresting words from a body of text
+- Investigating most frequently used words in a body of text
+- Perform sentiment analysis to find negative or positive work
+
+
+## `r emo::ji("wrench")` Instructions
+
+1. In each question, you will replace '___' with your answer. Please note that the Qmd will not knit until you've answered all of the questions.
+2. Once you have filled up all the blanks, remember to go to `knitr::opts_chunk` at the top of the document, change `eval = TRUE`, then knit the document.
+3. Exercise 9D is optional, and you can work on it at your own pace.
+
+Install the necessary packages.
+
+```{r}
+library(stopwords)
+library(tidyverse)
+library(tidytext)
+library(textdata)
+```
+
+ 
+## 🥡 Exercise 9A: Tidy text
+
+### Tokenising text
+
+```{r}
+text <- c("This will be an uncertain time for us my love",
+          "I can hear the echo of your voice in my head",
+          "Singing my love",
+          "I can see your face there in my hands my love",
+          "I have been blessed by your grace and care my love",
+          "Singing my love")
+
+text
+
+text_df <- tibble(line = seq_along(text), text = text)
+
+text_df
+```
+
+`unnest_tokens()` takes a character vector and unnests it into a tidy data frame.
+
+What's going on in these examples?
+
+```{r}
+text_df %>%
+  unnest_tokens(
+    output = word,
+    input = text,
+    token = "words" # default option
+  ) 
+```
+
+```{r}
+text_df %>%
+  unnest_tokens(
+    output = word,
+    input = text,
+    token = "characters"
+  )
+```
+
+Look at the help documentation for the `unnest_tokens()` function and read the options that you can use for the 'token' argument.
+
+```{r}
+?unnest_tokens
+```
+
+```{r}
+text_df %>%
+  unnest_tokens(
+    output = word,
+    input = text,
+    token = "ngrams",
+    n = 2
+  )
+```
+
+```{r}
+text_df %>%
+  unnest_tokens(
+    output = word,
+    input = text,
+    token = "ngrams",
+    n = 3
+  )
+```
+
+
+#### Use `unnest_tokens()` to help you answer the following questions from the two paragraphs of text below:
+
+```{r}
+dickens <- "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way - in short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only."
+
+burns <- c("This is a thousand monkeys working at a thousand typewriters. Soon, they'll have finished the greatest novel known to man. 
+'All right, let's see... It was the best of times, it was the BLURST of times?' You stupid monkey.")
+
+quotes_df <- tibble(from = c("Dickens", "Simpsons"),
+                    text = c(dickens, burns))
+```
+
+#### 1. How many words are in each quote?
+
+```{r}
+quotes_df %>%
+  unnest_tokens(output = ___, 
+                input = ___)  %>%
+  count(___)
+```
+
+#### 2. How many times does the trigram "it was the" occur?
+
+```{r}
+quotes_df %>%
+  unnest_tokens(output = trigram, 
+                input = text, 
+                token = ___, 
+                n = ___) %>%
+  filter(trigram == ___) %>% 
+  count(from)
+```
+
+### Stop Words
+
+- In computing, stop words are words which are filtered out before or after processing of natural language data (text).
+- They usually refer to the most common words in a language, but there is not a single list of stop words used by all natural language processing tools.
+
+Let's look at the list of stop words from the `tidytext` package.
+
+```{r}
+stopwords_english <- get_stopwords()
+stopwords_english
+```
+
+Here is an alternative dictionary of stop words from a different source `smart`.
+
+```{r}
+stopwords_smart <- get_stopwords(source = "smart")
+stopwords_smart
+```
+
+In the sentence "This will be an uncertain time for us my love", how many of these words are not stopwords?
+
+Step 1: Break up individual words
+
+```{r}
+uncertain <- text_df %>%
+  filter(line == 1) %>% 
+  unnest_tokens(word, text) 
+
+uncertain
+```
+
+Step 2: Remove the stop words with an anti-join from `dplyr`
+
+```{r}
+uncertain %>% 
+  anti_join(stopwords_english)
+```
+
+If you haven't used `anti_join()` before, have a look at the help documentation to see what it does.
+
+```{r}
+?anti_join
+```
+
+Using the quotes data frame we defined earlier, answer the following questions:
+
+- How many words are there in each quote after removing stop words?
+
+```{r}
+quotes_no_stopwords <- quotes_df %>% 
+  ___(output = word, 
+      input = text) %>% 
+  ___(stopwords_smart) 
+
+count(quotes_no_stopwords, from)
+```
+
+- What is the most frequent word in each of the quotes after removing stop words? 
+
+```{r}
+quotes_no_stopwords %>%
+  count(___, ___, sort = TRUE)
+```
+
+- What is the most frequent word across both quotes after removing stop words? 
+
+```{r}
+quotes_no_stopwords %>%
+  count(___, sort = TRUE)
+
+```
+
+
+### Sentiment
+
+- One way to analyze the sentiment of a text is to consider the text as a combination of its individual words 
+
+- and the sentiment content of the whole text as the sum of the sentiment content of the individual words
+
+- essentially a dictionary where different words are categorized either as positive or negative or on a numeric scale
+
+```{r eval = FALSE}
+# This function is for bypassing the interactive menu when knitting the document,
+# you don't need it if you are running the code chunk by chunk interactively.
+get_sentiments <- function(dict_name) {
+  if (!file.exists(paste0(dict_name, ".rds"))) {
+    textdata:::download_functions[[dict_name]](tempdir())
+    textdata:::process_functions[[dict_name]](tempdir(), paste0(dict_name, ".rds"))
+  }
+  readRDS(paste0(dict_name, ".rds"))
+}
+```
+
+```{r}
+# If you're asked if you want to download the database, please select yes, option 1 then enter.
+afinn <- get_sentiments("afinn") # numeric  
+afinn %>% filter(value == 5)  # example of very positive words. Have a go at changing the 5 to other numbers negative or positive and see what you get)
+
+bing <- get_sentiments("bing") # categorical
+bing
+```
+
+
+After tokenising into words, use a left/inner join to get the words sentiments.
+
+Stopwords don't have a sentiment associated, but also there are missing values when a word doesn't match the dictionary.
+
+Here, let us analyze the sentiment of the first line of `text_df`: "This will be an uncertain time for us my love".
+
+```{r}
+text_df %>% 
+  filter(line == 1) %>% 
+  unnest_tokens(word, text) %>% 
+  ___(afinn)
+```
+
+```{r}
+text_df %>% 
+  filter(line == 1) %>% 
+  unnest_tokens(word, text) %>% 
+  ___(bing)
+```
+
+Using the quotes we looked at above (`quotes_no_stopwords`), use the "afinn" lexicon to compute the average sentiment of each quote. Which one is considered more positive?
+
+```{r}
+quotes_no_stopwords %>%
+  ___(afinn) %>%
+  # now for each quote we want to summarise the average value
+  group_by(from) %>%
+  summarise(mean = mean(value, na.rm = TRUE))
+```
+
+
+### Analysing reviews of a video game
+
+This is a continuation of the example we looked at in the lecture:
+
+- User and critic reviews for the game [Animal Crossing](https://www.nintendo.com/games/detail/animal-crossing-new-horizons-switch/) scraped from Metacritc
+
+- This data comes from a [#TidyTuesday challenge](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-05-05/readme.md). 
+
+We can read the data into R directly using the following URLs:
+
+_(Note this requires an internet connection to work)_
+
+```{r}
+critics <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/critic.tsv')
+
+user_reviews <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/user_reviews.tsv')
+```
+
+Go through the process of using the critics data to look at the following:
+
+```{r}
+critic_words <- critics %>%
+  unnest_tokens(output = word, input = text)
+critic_words
+```
+
+#### 1. What are the most used words over the collection of reviews?
+
+```{r}
+critic_words %>%
+  ___(word, sort = TRUE)
+```
+
+#### 2. What are the most used words, after removing stop words?
+
+```{r}
+critics_words_no_stop <- critic_words %>%
+  ___(stopwords_smart)
+
+count(___, ___, sort= TRUE)
+```
+
+#### 3. Plot the distribution of word frequencies over the collection of reviews
+
+```{r}
+critic_words %>%
+  ___(word, sort = TRUE) %>%
+  ggplot(aes(x = ___)) +
+  geom_histogram()
+```
+
+From the plot above you can see that most words are only used once. This is pretty common.
+
+#### 4. What is the longest review and what is the shortest review?
+
+```{r}
+critic_words %>%
+  count(publication, sort=TRUE) %>%
+  filter(n == ___ | n == ___)
+
+```
+
+#### 5. Read the text of the shortest review
+
+```{r}
+critics %>%
+  filter(publication == ___) %>%
+  pull(text)  
+```
+
+#### 6. Using "afinn", add sentiment values to each word in a review
+
+```{r}
+critic_words <- critic_words %>%
+  ___(afinn)
+```
+
+#### 7. For each publication, compute the average sentiment for the review
+
+```{r}
+sentiment_avg <- critic_words %>%
+  group_by(publication) %>%
+  summarise(mean_sentiment = ___(value, na.rm = TRUE),   # value is the average sentiment
+            n_missing_words = ___(is.na(value)),
+            n_words = ___)
+```  
+
+#### 8. Are longer reviews more positive?
+
+```{r}
+sentiment_avg %>%
+  ggplot(aes(x = ___, y = ___)) +
+  geom_point()
+```
+  
+#### 9. Do the grades correlate with the review score? Are there any reviews with negative sentiments but high scores?
+  
+```{r}
+critics %>%
+  left_join(sentiment_avg, by = ___) %>%
+  ggplot(aes(x = grade, y = mean_sentiment)) +
+  geom_point()
+```
+
+## 📚 Exercise 9B: Austen Book
+
+### The books of Jane Austin
+
+In this lab exercise, we will analyse the sentiment of Austen's books. Below is the code to tokenise the books and add line numbers and chapters.
+
+```{r tidy-books}
+library(janeaustenr)
+
+tidy_books <- austen_books() %>%
+                group_by(book) %>%
+                mutate(linenumber = row_number(),
+                       chapter = cumsum(
+                         str_detect(text,
+                                    regex("^chapter [\\divxlc]",
+                                          ignore_case = TRUE)))
+                       ) %>%
+                ungroup() %>%
+                unnest_tokens(word, text)
+```
+
+#### 1. Add sentiment categories to all the books using the "nrc" lexicon.
+
+```{r nrc}
+nrc <- get_sentiments(___)
+```
+
+
+#### 2. What are the most common "anger" words used in Emma?
+
+```{r}
+Emma_nrc <- tidy_books %>% 
+  filter(book == ___) %>%
+  inner_join(nrc, by = ___) 
+
+Emma_nrc %>% 
+  filter(sentiment == ___) %>%
+  count(word, sort = TRUE)
+```
+
+#### 3. What are the most common "surprise" words used in Emma?
+
+```{r}
+Emma_nrc %>% 
+  filter(sentiment ==___) %>%
+  count(word, sort = TRUE)
+
+```
+
+Using another lexicon ("bing", or "afinn"), compute the proportion of positive words in each of Austen's books.
+
+#### 4. Which book is the most positive and which is the most negative?
+
+```{r}
+wordcounts <- tidy_books %>%
+  group_by(book) %>%
+  summarise(total_book_words = n())
+
+tidy_books %>% 
+  inner_join(get_sentiments("bing"), by = "word") %>%
+  group_by(book, sentiment) %>%
+  summarize(sentiment_word_count = ___) %>%
+  left_join(wordcounts, by = "book")  %>%
+  ___(ratio = sentiment_word_count / total_book_words) %>%
+  group_by(sentiment) %>%
+  top_n(1, ratio)
+ 
+```
+
+
+## 📚 Exercise 9C: The Simpsons
+
+The Simpsons data set is available as below.
+
+```{r read-scripts}
+scripts <- read_csv("data/simpsons_script_lines.csv")
+chs <- read_csv("data/simpsons_characters.csv")
+sc <- left_join(scripts, chs, by = c("character_id" = "id"))
+sc
+```
+
+### Section A:
+
+#### 1. Count the number of times a character speaks
+
+```{r count-names}
+sc %>% 
+  count(___, sort = TRUE)
+```
+
+#### 2. Are there missing names?
+
+Yes - these are not speaking lines
+
+```{r explore-missing}
+sc %>% 
+  filter(___(___))
+```
+
+#### 3. Pre-process the text by tokenizing the words and removing the stopwords.
+
+```{r process-simpsons-s1}
+# Step 1. Unnest tokens for spoken words
+# Step 2. Remove stop words
+sc_long <- sc %>%
+  filter(speaking_line) %>%
+  ___(output = word, input = spoken_words) %>% 
+  ___(get_stopwords())
+```
+
+
+#### 4. Count the words
+
+```{r process-simpsons-s3}
+sc_words <- sc_long %>%
+  ___(word, sort = TRUE)
+
+head(sc_word_by_character)
+```
+
+
+#### 5. Plot a graph of the top 20 spoken words
+
+```{r process-simpsons-s4}
+sc_words %>% 
+  top_n(20, wt = n) %>% 
+  ggplot(aes(x = ___(word, n), 
+             y = n)) +
+  geom_col() +
+  labs(x = '', 
+       y = 'count', 
+       title = 'Top 20 words') +
+  coord_flip() 
+```
+
+
+### 5. Tag the words with sentiments. First, count words spoken by each character
+
+```{r tag-sentiments}
+sc_word_by_character <- sc_long %>% 
+  count(___, ___)
+```
+
+
+Using "afinn", words will be tagged on a negative to positive scale of -5 to 5.
+
+```{r tag-sentiments2}
+sc_s <- sc_word_by_character %>% 
+  inner_join(___("afinn"), 
+             by = "word")
+sc_s
+```
+
+Compute the mean sentiment for each character.
+
+```{r summarise-simpsons-characters}
+sc_s %>% 
+  group_by(name) %>% 
+  summarise(m = mean(value, na.rm = TRUE)) %>% 
+  arrange(desc(m))
+```
+
+### Focus on the main characters, instead of all characters.
+
+#### 1. Keep characters that have spoken at least 999 lines
+
+```{r keep-main-chars}
+keep <- sc %>% 
+  count(name, 
+           sort = TRUE) %>%
+  filter(!is.na(name)) %>%
+  filter(n ___ ____)
+```
+
+#### 2. Re-compute the sentiment after removing unimportant characters:
+
+```{r main-characters}
+sc_s %>% 
+  filter(name %in% keep$name) %>% 
+  group_by(name) %>% 
+  ___(m = mean(value)) %>% 
+  arrange(desc(m))
+```
+
+
+### Section B 
+
+#### 1. Bart Simpson is featured at various ages. How has the sentiment of his words changed over his life?
+
+```{r}
+# Hint use string detect - run this example to see how it works
+str_detect(c("Bart", "Homer", "30 year old Bart"), "Bart")
+
+sc_s %>%
+  filter(str_detect(name, "Bart")) %>%
+  group_by(name) %>%
+ summarise(m = mean(value)) %>% 
+  arrange(desc(m))
+```
+
+80 year old Bart is the most positive
+
+#### 2. Repeat the sentiment analysis with the "nrc" lexicon. What character is the most "angry"? "joyful"?
+
+```{r}
+
+nrc <- get_sentiments(___)
+
+sc_nrc <- sc_word_by_character %>%
+  inner_join(nrc, by = "word")
+
+sc_nrc_main <- sc_nrc %>%
+   filter(name %in% ___)
+```
+
+
+```{r}
+sc_nrc_main %>%
+  filter(sentiment == ___) %>%
+  count(name, sort = TRUE)
+
+sc_nrc_main %>%
+  filter(sentiment == ___) %>%
+  count(name, sort = TRUE)
+```
+
+
+## 📚 Exercise 9D: Gutenberg (Optional)
+
+### Section A - Getting some books to study
+
+The [Gutenberg project](http://www.gutenberg.org/) provides the text of over 57,000 books free online. 
+
+Let's explore "The Origin of the Species" by *Charles Darwin* using the `gutenbergr` R package.
+
+We need to know the `id` of the book, which means looking this up online anyway. 
+
+- The first edition is `1228`
+- The sixth edition is `2009`
+
+
+#### 1. Packages used
+
+We need the `tm` package to remove numbers from the page, and `gutenbergr` to access the books.
+
+```{r load-extra-pkgs}
+# The tm package is needed because the book has numbers
+# in the text, that need to be removed, and the
+# install.packages("tm")
+library(tidyverse)
+library(tidytext)
+library(tm)
+library(gutenbergr)
+library(broom)
+library(plotly)
+```
+
+#### 2. Download darwin
+
+```{r download-darwin}
+darwin1 <- gutenberg_download(1228, mirror = "http://mirror.csclub.uwaterloo.ca/gutenberg")
+darwin1
+
+# remove the numbers from the text
+darwin1$text <- removeNumbers(darwin1$text)
+```
+
+
+#### 3. Tokenize
+
+- Break into one word per line
+- Remove the stop words
+- Count the words
+- Find the length of the words
+
+```{r tokenize-text}
+stop_words <- ___
+
+darwin1_words <- darwin1 %>%
+  ___(word, text) %>%
+  ___(stop_words) %>%
+  count(word, sort = TRUE) %>%
+  mutate(len = str_length(word))
+
+darwin1_words
+```
+
+#### 4. Download and tokenize the 6th edition.
+
+```{r dl-second-edition}
+darwin6 <- gutenberg_download(2009, mirror = "http://mirror.csclub.uwaterloo.ca/gutenberg")
+
+darwin6$text <- removeNumbers(darwin6$text)
+```
+
+#### 5. Show tokenized words using histogram.
+
+```{r analyse-text}
+ggplot(darwin1_words, aes(x = n)) +
+  geom_histogram(fill = "midnightblue")
+```
+
+```{r gg-analyse-text, eval = FALSE}
+darwin1_words %>%
+  top_n(n = 20, wt = n) %>%
+  ggplot(aes(x = n,
+             y = fct_reorder(word, n))) +
+  geom_point() +
+  ylab("")
+```  
+
+```{r table-second-edition}
+darwin6_words <- darwin6 %>%
+  ___(word, text) %>%
+  ___(stop_words) %>%
+  ___(word, sort = TRUE) %>%
+  ___(len = str_length(word))
+
+darwin6_words
+```
+
+```{r quantile-second-edition}
+ggplot(darwin6_words, aes(x = n)) +
+  geom_histogram(fill = "midnightblue")
+```
+
+```{r gg-second-edition}
+darwin6_words %>%
+  top_n(n = 20,
+        wt = n) %>%
+  ggplot(aes(x = n, 
+             y = fct_reorder(word, n))) + 
+  geom_point() +
+  ylab("")
+```
+
+#### 6. Compare the word frequency - how often does the same word appear in each edition?
+
+```{r full-join-darwin}
+darwin <- ___(  # Full join joins everything together from both tables
+  darwin1_words, 
+  darwin6_words, 
+  by = "word"
+  ) %>%
+  rename(
+    n_ed1 = n.x, 
+    len_ed1 = len.x, 
+    n_ed6 = n.y, 
+    len_ed6 = len.y
+  )
+```
+
+#### 7. Plot the word frequency
+
+```{r plot-word-freq, eval = FALSE}
+ggplot(darwin, 
+            aes(x = n_ed1, 
+                y = n_ed6, 
+                label = word)) +
+  geom_abline(intercept = 0, 
+              slope = 1) +
+  geom_point(alpha = 0.5) +
+  xlab("First edition") + 
+  ylab("6th edition") +
+  scale_x_log10() +   # puts everything on a log scale, good to do for count data so that things with large counts don't dominate the scaling of the graph.
+  scale_y_log10() + 
+  theme(aspect.ratio = 1)
+
+library(plotly)
+ggplotly()  # This will let us see the word labels for the points
+```
+
+
+#### 8. Book comparison. Idea: Find the important words for the content of each document by decreasing the weight of commonly used words and increasing the weight for words that are not used very much in a collection or corpus of documents.
+
+### Term frequency, inverse document frequency (`tf_idf`).
+
+Helps measure word importance of a document in a collection of documents.
+
+Recall:
+
+$$ tf\_idf(w, d, \mathcal{D}) = tf(w,d) \times idf(w, \mathcal{D})$$
+where the term frequency (*tf*) is how often the word occurs as a fraction of all the words in the text and the *idf* is the number of times the word occurs over the collection of documents. 
+
+#### 9. Bind the editions:
+
+```{r bind-rows-darwin}
+darwin_all <- ___("first" = darwin1_words, 
+                    "sixth" = darwin6_words,
+                    .id = "edition")
+
+darwin_all
+```
+
+#### 10. Compute tf-idf
+
+```{r darwin-tf-idf}
+darwin_tf_idf <- darwin_all %>% 
+  ___(word, edition, n)
+
+darwin_tf_idf %>% 
+  arrange(desc(tf_idf))
+```
+
+
+#### 11. Plot the results for top words
+
+```{r gg-rawin-tf-idf, echo = FALSE}
+gg_darwin_1_vs_6 <-
+darwin_tf_idf %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(edition) %>%
+  top_n(15, wt = tf_idf) %>%
+  ungroup() %>%
+  ggplot(aes(x = fct_reorder(word, tf_idf),
+             y = tf_idf, 
+             fill = edition)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, 
+       y = "tf-idf") +
+  facet_wrap(~edition, 
+             ncol = 2, 
+             scales = "free") +
+  coord_flip() + 
+  scale_fill_brewer(palette = "Dark2")
+```  
+
+
+```{r gg-rawin-tf-idf-out, echo = FALSE}
+gg_darwin_1_vs_6
+```
+
+- Mr Mivart appears in the 6th edition, multiple times
+
+```{r show-mivart}
+str_which(darwin6$text, "Mivart")
+darwin6[5435, ]
+```
+
+#### 12. What do we learn?
+
+___
+
+
+### Section B. Worked example - Comparing Darwin
+
+#### 1. Does it look like the 6th edition was an expanded version of the first?
+
+```{r}
+# Look at number of words in each edition
+darwin_all %>%
+  ___(edition) %>%
+  summarise(total = sum(n))
+```
+
+#### 2. What word is most frequent in both editions? (hint refer to plots above)
+
+#### a. Find some words that are not in the first edition but appear in the 6th.
+
+```{r}
+darwin %>%
+  filter(is.na(___))
+
+```
+
+#### b. Find some words that are used the first edition but not in the 6th.
+
+```{r}
+darwin %>%
+  filter(is.na(___))
+```
+
+#### 3. Using a linear regression model, find the top few words that appear more often than expected, based on the frequency in the first edition. Find the top few words that appear less often than expected.
+
+```{r}
+darwin <- darwin %>%
+  mutate(log_n_ed1 = log1p(n_ed1),
+          log_n_ed6 = log1p(n_ed6)
+  )
+
+word_darwin_lm <- ___(log_n_ed6 ~ log_n_ed1, data = darwin)
+```
+
+
+There are more positive residuals than negative residuals in the residual plot.
+
+```{r}
+
+darwin_narm <- darwin %>% 
+  filter(!is.na(log_n_ed6) & !is.na(log_n_ed1))
+
+darwin_aug <- ___(word_darwin_lm, darwin_narm)
+
+ggplot(darwin_aug,
+       aes(x = ___, 
+           y = ___, 
+           label = word)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, size = 2, colour = "white")
+
+ggplotly()
+
+```

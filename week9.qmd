@@ -1,0 +1,1029 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 9: Text Analysis"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 9 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'tidytext', 'textdata', 'gutenbergr', 'stopwords']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+library(tidytext)
+library(textdata)
+library(gutenbergr)
+```
+
+---
+
+## `r fontawesome::fa("lightbulb")` Recap
+
+- What is web scraping?
+- `rvest` and `polite`
+- What is a function?
+- File paths and RStudio projects
+
+
+---
+
+## `r fontawesome::fa("sitemap")` Outline
+
+1. Regular expression
+2. Why do we want to analyze text data?
+3. Steps for text analysis
+4. R packages for text analysis
+5. Tidy text
+6. Stop words
+7. Sentiment of the text
+8. Word Importance
+
+---
+
+## Regular Expression {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("search")` Regular Expression
+
+**Regular expressions** provide a concise and flexible way to define patterns in strings. 
+
+At their most basic level, they can be used to match a **fixed string**, allowing the pattern to appear anywhere **from one to multiple times** within a single string.
+
+::: {.columns}
+
+::: {.column}
+
+
+```{webr-r}
+str_view(fruit, "berry")
+str_view(fruit, "r")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+## `str_view()`
+
+We will use `stringr::str_view()` to demonstrate various regular expression syntax.
+
+The `str_view()` function highlights matching patterns by enclosing them in `<>`.
+
+
+:::
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("search")` Metacharacter
+
+
+**Metacharacters** have special meaning in regular expression.
+
+::: {.columns}
+
+::: {.column}
+
+
+
+
+```{webr-r}
+#| editor-max-height: 200
+str_view(fruit, "r.")
+str_view(fruit, "^b")
+str_view(fruit, "y$")
+str_view(fruit, "^a|^b")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+## Common Metacharacters (1/3)
+
+- `.`: match **any character** except for `\n`
+- `^`: match the **starting position** within the string
+- `$`: match the **ending position** of the string
+- `|`: match the expression before or the expression after the operator
+
+
+:::
+
+:::
+
+:::
+
+---
+
+
+## `r fontawesome::fa("search")` Metacharacter
+
+**Quantifiers** control how many times a pattern matches.
+
+::: {.columns}
+
+::: {.column}
+
+
+```{webr-r}
+#| editor-max-height: 200
+str_view(fruit, "^ap*")
+str_view(fruit, "e{1,2}$")
+str_view(fruit, "^ap?")
+str_view(fruit, "ap.+")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+## Common Metacharacters (2/3)
+
+
+- `*`: match the preceding element **zero or more times**
+- `{m,n}`: match the preceding element **at least $m$ and not more than $n$ times**
+- `?`: match the preceding element **zero or one time**
+- `+`: match the preceding element **one or more times**
+
+
+:::
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("search")` Metacharacter
+
+A **character set**, allows you to match any character in a set. 
+
+**Remember, `\` needs to be escaped.**
+
+::: {.columns}
+
+::: {.column}
+
+
+```{webr-r}
+#| editor-max-height: 200
+str_view(fruit, "[abc]")
+str_view(fruit, "[^a-z]")
+str_view(fruit, "\\w+")
+str_view(fruit, "a[cp]")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+## Common Metacharacters (3/3)
+
+
+- `[]`: match **a single character** that is **contained** within the brackets
+- `[^]`: match **a single character** that is **not contained** within the brackets
+- `[a-z]`: match any **lower case letter**
+- `[A-Z]`: match any **upper case letter**
+- `[0-9]`: match any **number**
+- `\d`: match any **digit**
+- `\w`: match any **word** character (**letter** and **number**)
+
+
+:::
+
+:::
+
+:::
+
+
+---
+
+## `r fontawesome::fa("search")` Grouping and Capturing
+
+Parentheses create **capturing groups**, enabling you to work with specific subcomponents of a match.
+
+::: {.columns}
+
+::: {.column}
+
+
+```{webr-r}
+#| editor-max-height: 200
+str_view(fruit, "([a-z])\\1")
+str_replace(c("AUD 1", "USD 15", "NZD 6.4"),
+            "(^[A-Z]*) *(.*)",
+            "$\\2 (\\1)")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-tip .no-top-margin-callout}
+
+
+You can reuse these groups in your pattern, where `\1` refers to the match inside the first set of parentheses, `\2` refers to the second, and so forth.
+
+- `.*` means 0 or more of any character
+
+
+:::
+
+:::
+
+:::
+
+---
+
+
+## Text Analysis {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("envelope-open-text")` What is Text Analysis?
+
+Text analysis is a set of techniques that enable data analysts to **extract and quantify information stored in the text**, whether it's from *messages*, *tweets*, *emails*, *books*, or other sources.
+
+::: {.callout-note}
+
+## For example:
+
+- Predicting Melbourne house prices based on realtor descriptions.
+- Gauging public discontent with Melbourne train stoppages using Twitter data.
+- Identifying differences between the first and sixth editions of Darwin's *Origin of the Species*.
+- Analyzing and quantifying sentiment within a given text.
+
+:::
+
+---
+
+## `r fontawesome::fa("hourglass-start")` Text Analysis Process
+
+We will use the `tidytext` package for the first three steps and the `gutenbergr` package to obtain text data.
+
+1. Import the text.
+2. Pre-process the data by removing less meaningful words, known as **stop words**.
+3. Tokenize the text by breaking it into **words**, **sentences**, **n-grams**, or chapters.
+4. Summarize the results.
+5. Apply modeling techniques.
+
+---
+
+## <img src="images/tidytext.png" class="png-icon"> `tidytext`
+
+Using [tidy data principles](https://www.tidytextmining.com/) can make many text mining tasks **easier**,
+**more effective**, and consistent with tools already in wide use.
+
+Lets' start with a conversation from *Game of Thrones*:
+
+```{webr-r}
+#| editor-max-height: 400
+text <- c("What is it that you want, exactly?",
+          "Peace. Prosperity",
+          "A land where the powerful do not prey on the powerless",
+          "Where the castles are made of gingerbread",
+          "and the moats are filled with blackberry wine",
+          "The powerful have always preyed on the powerless",
+          "that’s how they became powerful in the first place",
+          "Perhaps ",
+          "And perhaps we’ve grown so used to horror",
+          "we assume there’s no other way")
+```
+
+
+---
+
+## <img src="images/tidytext.png" class="png-icon"> What is Tidy Text Format?
+
+**Tidy text format is a table with one-token-per-row.**
+
+A token is a **meaningful unit of text**, such as a **word**, that we are interested in using for analysis.
+
+**Tokenization** (`unnest_tokens()`) is the process of **splitting text into tokens**. 
+
+```{webr-r}
+tibble(line = seq_along(text), text = text) %>%
+  unnest_tokens(output = word, input = text, token = "words")
+```
+
+## <img src="images/tidytext.png" class="png-icon"> Unit for Tokenization - Characters
+
+Use **characters** as tokens.
+
+```{webr-r}
+tibble(line = seq_along(text), text = text) %>%
+  unnest_tokens(output = word, input = text, token = "characters")
+```
+
+## <img src="images/tidytext.png" class="png-icon"> Unit for Tokenization - Ngrams
+
+**Ngrams** are groups of words define by `n`. 
+
+```{webr-r}
+tibble(line = seq_along(text), text = text) %>%
+  unnest_tokens(output = word, input = text, token = "ngrams", n = 2)
+```
+
+## `r fontawesome::fa("otter")` Analyzing User Reviews for *Animal Crossing: New Horizons* (A Nintendo Game)
+
+The dataset consists of user and critic reviews for [*Animal Crossing: New Horizons*](https://www.nintendo.com/games/detail/animal-crossing-new-horizons-switch/), scraped from [Metacritic](https://www.metacritic.com/game/animal-crossing-new-horizons/).
+
+This data was sourced from a [#TidyTuesday](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-05-05/readme.md) challenge.
+
+```{webr-r}
+#| message: false
+acnh_user_reviews <- read_tsv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/acnh_user_reviews.tsv")
+glimpse(acnh_user_reviews)
+```
+
+## `r fontawesome::fa("wave-square")` Grade Distribution
+
+::: {.columns}
+
+::: {.column}
+
+```{webr-r}
+#| message: false
+ggplot(acnh_user_reviews) +
+  geom_histogram(aes(grade))
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-warning .no-top-margin-callout}
+
+A value of 0 could indicate missing data!
+
+:::
+
+:::
+
+:::
+
+## `r fontawesome::fa("circle-plus")` Positive Reviews
+
+```{webr-r}
+#| editor-max-height: 300
+set.seed(1999)
+acnh_user_reviews %>%
+  filter(grade > 8) %>%
+  sample_n(3) %>%
+  .$text
+```
+
+## `r fontawesome::fa("circle-minus")` Negative Reviews
+
+```{webr-r}
+#| editor-max-height: 300
+set.seed(2099)
+acnh_user_reviews %>%
+  filter(grade == 0) %>%
+  sample_n(3) %>%
+  .$text
+```
+
+## `r fontawesome::fa("trash")` Remove the "Expand" from the Text
+
+Long reviews are compressed from the scraping procedure. 
+
+We will remove these characters from the text.
+
+```{webr-r}
+acnh_user_reviews_parsed <- acnh_user_reviews %>%
+  mutate(text = str_remove(text, "Expand$"))
+```
+
+## `r fontawesome::fa("broom")` Tidy up the Reviews
+
+Use `unnest_tokens()` to convert the data into **tidy text format**. 
+
+```{webr-r}
+user_reviews_words <- acnh_user_reviews_parsed %>%
+  unnest_tokens(output = word, input = text)
+user_reviews_words
+```
+
+## `r fontawesome::fa("wave-square")` Distribution of Words Per Review
+
+::: {.columns}
+
+::: {.column}
+
+```{webr-r}
+#| message: false
+#| editor-max-height: 300
+user_reviews_words %>%
+  count(user_name) %>%
+  ggplot(aes(x = n)) +
+  geom_histogram() +
+  labs(x = "Number of words used per review",
+       y = "Number of users")
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+- 58% of reviewers write fewer than 75 words, while 36% write more than 150 words.
+
+- most users tend to provide brief feedback, while a smaller group of more engaged reviewers write longer, more detailed responses.
+
+:::
+
+:::
+
+:::
+
+## `r fontawesome::fa("fire")` Most Common Words
+
+
+
+::: {.columns}
+
+::: {.column}
+
+```{webr-r}
+user_reviews_words %>%
+  count(word, sort = TRUE)
+```
+
+:::
+
+::: {.column}
+
+::: {.callout-note .no-top-margin-callout}
+
+Certain common words, such as "the" and "a," don't contribute much meaning to the text.
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("ban")` Stop Words
+
+In computing, **stop words** are words that are filtered out before or after processing natural language data (text).
+
+These words are generally among the **most common in a language**, but there is no universal list of stop words used by all natural language processing tools.
+
+While stop words often **do not add meaning to the text**, they do contribute to its grammatical structure.
+
+---
+
+## `r fontawesome::fa("ban")` English Stop Words
+
+**Lexicon**: a word book or reference word book.
+
+```{webr-r}
+get_stopwords()
+```
+
+---
+
+## `r fontawesome::fa("ban")` Chinese Stop Words
+
+```{webr-r}
+get_stopwords(language = "zh", source = "misc")
+```
+
+---
+
+## `r fontawesome::fa("book")` Various Lexicons
+
+See `?get_stopwords` for more info.
+
+```{webr-r}
+stopwords_getsources()
+get_stopwords(source = "smart")
+```
+
+---
+
+## `r fontawesome::fa("book")` Comparing Lexicons by the Number of Stopwords
+
+It is perfectly acceptable to start with a pre-made word list and remove or append additional words according to your particular use case. 
+
+```{webr-r}
+nrow(get_stopwords(source = "smart"))
+nrow(get_stopwords(source = "snowball"))
+nrow(get_stopwords(source = "stopwords-iso"))
+```
+
+---
+
+## `r fontawesome::fa("trash")` Remove Stopwords
+
+You can replace `filter()` with an `anti_join()` call, but `filter()` makes the action clearer.
+
+::: {.columns}
+
+::: {.column width=60%}
+
+```{webr-r}
+#| editor-max-height: 300
+stopwords_smart <- get_stopwords(source = "smart")
+user_reviews_words %>%
+  filter(!word %in% stopwords_smart$word) %>%
+  count(word, sort = TRUE)
+```
+
+:::
+
+::: {.column width=40%}
+
+
+::: {.callout-note .no-top-margin-callout}
+
+The most common words are fitting, as the **game** is a popular **Nintendo** title for the **Switch console**, where **players** can create and **play** on their own **island** paradise with **animal** villagers.
+
+:::
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("chart-bar")` Frequency of Words in User Reviews
+
+
+
+::: {.columns}
+
+::: {.column}
+
+```r
+user_reviews_words %>%
+  anti_join(stopwords_smart) %>%
+  count(word) %>%
+  arrange(-n) %>%
+  top_n(20) %>%
+  ggplot(aes(fct_reorder(word, n), n)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Frequency of words in user reviews",
+  subtitle = "",
+  y = "",
+  x = "")
+```
+
+:::
+
+
+::: {.column}
+
+```{r echo = FALSE}
+acnh_user_reviews <- read_tsv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/acnh_user_reviews.tsv")
+acnh_user_reviews_parsed <- acnh_user_reviews %>%
+  mutate(text = str_remove(text, "Expand$"))
+user_reviews_words <- acnh_user_reviews_parsed %>%
+  unnest_tokens(output = word, input = text)
+stopwords_smart <- get_stopwords(source = "smart")
+user_reviews_words %>%
+  anti_join(stopwords_smart) %>%
+  count(word) %>%
+  arrange(-n) %>%
+  top_n(20) %>%
+  ggplot(aes(fct_reorder(word, n), n)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Frequency of words in user reviews",
+  subtitle = "",
+  y = "",
+  x = "")
+```
+
+:::
+
+:::
+
+---
+
+## Let's have a break! {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Sentiment Analysis {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("face-tired")` Sentiment Lexicons
+
+**Sentiment analysis** is the process of determining the **emotional tone or opinion expressed in a piece of text**. 
+
+It is commonly used to analyze customer feedback, reviews, and social media.
+
+::: {.callout-note}
+
+## Three widely used **general-purpose lexicons** for **sentiment analysis** are:
+
+1. **AFINN**: developed by Finn Årup Nielsen, which assigns words a **score ranging from -5 to 5**, with **negative scores reflecting negative sentiment** and **positive scores reflecting positive sentiment**.
+2. **bing**: created by Bing Liu and collaborators, which classifies words into two simple categories: **positive or negative**.
+3. **nrc**: by Saif Mohammad and Peter Turney, which categorizes words into emotions such as **anger**, **anticipation**, **disgust**, **fear**, **joy**, **sadness**, **surprise**, and **trust**, in addition to **positive** and **negative** sentiment.
+
+All three lexicons are based on **unigrams** (**single word**).
+
+
+:::
+
+---
+
+## `r fontawesome::fa("face-tired")` Sentiment Analysis
+
+- One approach to analyzing text sentiment is to treat the text as a combination of individual words.
+- The overall sentiment is determined by **summing the sentiment values of the individual words**.
+- However, this method can be inaccurate as it overlooks **context**, **word order**, and the impact of **phrases that can change the meaning of individual words**.
+- Solution: Machine learning applied to large-scale text datasets can address these challenges. You will explore these concepts in ETC3250/ETC5250 and ETC3555/ETC5555.
+
+---
+
+## `r fontawesome::fa("book")` Sentiment Lexicons
+
+::: {style="display: none"}
+
+```{webr-r}
+#| context: setup
+get_sentiments <- function(dict_name) {
+  read_rds(glue::glue("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/{dict_name}.rds"))
+}
+```
+
+:::
+
+Use `get_sentiments()` to get the Lexicons.
+
+```{webr-r}
+get_sentiments("afinn")
+get_sentiments("bing")
+get_sentiments("nrc")
+```
+
+
+---
+
+## `r fontawesome::fa("face-tired")` Sentiments in the Reviews
+
+`inner_join()` return rows from reviews if the word can be found in the Lexicon.
+
+```{webr-r}
+#| editor-max-height: 300
+sentiments_bing <- get_sentiments("bing")
+user_reviews_words %>%
+  inner_join(sentiments_bing) %>%
+  count(sentiment, word, sort = TRUE)
+```
+
+---
+
+## `r fontawesome::fa("eye")` Visualizing Sentiments
+
+```{r echo = FALSE}
+sentiments_bing <- get_sentiments("bing")
+```
+
+
+
+
+::: {.columns}
+
+::: {.column}
+
+```r
+user_reviews_words %>%
+  inner_join(sentiments_bing) %>%
+  count(sentiment, word, sort = TRUE) %>%
+  arrange(desc(n)) %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  ggplot(aes(fct_reorder(word, n), n, fill = sentiment)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~sentiment, scales = "free") +
+  theme_minimal() +
+  labs(title = "Sentiments in user reviews", x = "") 
+```
+
+:::
+
+
+::: {.column}
+
+```{r echo = FALSE}
+user_reviews_words %>%
+  inner_join(sentiments_bing) %>%
+  count(sentiment, word, sort = TRUE) %>%
+  arrange(desc(n)) %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  ggplot(aes(fct_reorder(word, n), n, fill = sentiment)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~sentiment, scales = "free") +
+  theme_minimal() +
+  labs(
+  title = "Sentiments in user reviews",
+  x = ""
+  ) 
+```
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("face-laugh-beam")` Average Sentiment Per Review
+
+The average sentiment per review improves as the grade increases.
+
+```{webr-r}
+#| editor-max-height: 400
+#| warning: false
+#| editor-font-scale: 0.5
+inner_join(user_reviews_words, sentiments_bing) %>%
+  group_by(user_name) %>%
+  summarise(grade = factor(first(grade), 0:10), ave_sentiment = mean(sentiment == "positive")) %>%
+  ggplot() +
+  geom_boxplot(aes(grade, ave_sentiment))
+```
+
+
+---
+
+## `r fontawesome::fa("fire")` Common Words over Grades
+
+Some common words appear in both very positive and very negative reviews, so how do we determine their importance?
+
+```{webr-r}
+user_reviews_words %>%
+  filter(!word %in% stopwords_smart$word) %>%
+  count(grade, word, sort = TRUE) 
+```
+
+---
+
+
+## Word Importance {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("star")` Word Importance
+
+How do we measure the **importance of a word to a document in a collection of documents**?
+
+For example a novel in a collection of novels or a review in a set of reviews...
+
+We combine the following statistics:
+
+- **Term frequency**
+- **Inverse document frequency**
+
+---
+
+## `r fontawesome::fa("calculator")` Term Frequency
+
+The **raw frequency** of a word $w$ in a document $d$. It is a function of
+the word and the document.
+
+<br>
+
+$$
+tf(w, d) = \frac{\text{count of } w \text{ in } d}{\text{total number of words in } d}
+$$
+
+<br>
+
+The **term frequency for each word** is the number of times that word occurs divided by the total number of words in the document.
+
+---
+
+## `r fontawesome::fa("calculator")` Term Frequency
+
+For our reviews **a document is a single user's review**. [More about that here.](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)
+
+```{webr-r}
+#| editor-max-height: 300
+user_reviews_words %>%
+  filter(!word %in% stopwords_smart$word) %>%
+  filter(user_name == "Discoduckasaur") %>%
+  count(word, sort = TRUE) %>%
+  mutate(tf = n / sum(n)) %>%
+  arrange(desc(tf)) 
+```
+
+---
+
+## `r fontawesome::fa("calculator")` Inverse Document Frequency
+
+The **inverse document frequency** tells how common or rare a word is
+**across a collection of documents**. It is a function of a word $w$, and
+the collection of documents $\mathcal{D}$.
+
+<br>
+
+$$
+idf(w, \mathcal{D}) = \log\left(\frac{\text{size of } \mathcal{D}}{\text{number of documents that contain }w}\right)
+$$
+
+<br>
+
+If every document contains $w$, then $\log(1) = 0$.
+
+
+
+
+---
+
+## `r fontawesome::fa("calculator")` Inverse Document Frequency
+
+For the reviews data set, our collection is all the reviews. You could
+compute this in a somewhat roundabout as follows:
+
+```{webr-r}
+#| editor-max-height: 300
+#| warning: false
+user_reviews_words %>%
+  filter(!word %in% stopwords_smart$word) %>%
+  mutate(collection_size = n_distinct(user_name)) %>%
+  group_by(collection_size, word) %>%
+  summarise(times_word_used = n_distinct(user_name)) %>%
+  mutate(freq = collection_size / times_word_used, idf = log(freq)) 
+```
+
+---
+
+## `r fontawesome::fa("calculator")` All together: Term Frequency, Inverse Document Frequency
+
+Multiply `tf` and `idf` together. This is a function of a word $w$, a
+document $d$, and the collection of documents $\mathcal{D}$:
+
+<br>
+
+$$
+tf\_idf(w, d, \mathcal{D}) = tf(w, d) \times idf(w,\mathcal{D})
+$$
+
+<br>
+
+A high `tf_idf` value indicates that a word **appears frequently in a specific document but is relatively rare across all documents**. 
+
+Conversely, a low `tf_idf` value means the word **occurs in many documents**, causing the `idf` to approach zero and resulting in a small `tf_idf`.
+
+---
+
+## `r fontawesome::fa("calculator")` `tf_idf`
+
+we can use `tidytext` to compute those values:
+
+```{webr-r}
+#| editor-max-height: 300
+user_reviews_words %>%
+  filter(!word %in% stopwords_smart$word) %>%
+  count(user_name, word, sort = TRUE) %>%
+  bind_tf_idf(term = word, document = user_name, n = n)
+```
+
+
+---
+
+## `r fontawesome::fa("face-smile-wink")` What Words Were Important to (A Sample of) Users that Had Positive Reviews?
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE, out.width="50%"}
+user_reviews_words %>%
+  anti_join(stopwords_smart) %>%
+  count(user_name, word, sort = TRUE) %>%
+  bind_tf_idf(term = word, document = user_name, n = n) %>%
+  arrange(user_name, desc(tf_idf)) %>%
+  filter(user_name %in% c("Alucard0", "Cbabybear", "TheRealHighKing")) %>%
+  group_by(user_name) %>%
+  top_n(5) %>%
+  mutate(rank = paste("Top", 1:n())) %>%
+  ungroup() %>%
+  mutate(word = interaction(rank, word, lex.order = TRUE, sep = " : ")) %>%
+  mutate(word = `levels<-`(rev(word), rev(levels(word)))) %>%
+  ggplot() +
+  geom_col(aes(word, tf_idf)) +
+  facet_wrap(~user_name, ncol = 1, scales = "free_y") +
+  coord_flip()
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+user_reviews_words %>%
+  anti_join(stopwords_smart) %>%
+  count(user_name, word, sort = TRUE) %>%
+  bind_tf_idf(term = word, document = user_name, n = n) %>%
+  arrange(user_name, desc(tf_idf)) %>%
+  filter(user_name %in% c("Alucard0", "Cbabybear", "TheRealHighKing")) %>%
+  group_by(user_name) %>%
+  top_n(5) %>%
+  mutate(rank = paste("Top", 1:n())) %>%
+  ungroup() %>%
+  mutate(word = interaction(rank, word, lex.order = TRUE, sep = " : ")) %>%
+  mutate(word = `levels<-`(rev(word), rev(levels(word)))) %>%
+  ggplot() +
+  geom_col(aes(word, tf_idf)) +
+  facet_wrap(~user_name, ncol = 1, scales = "free_y") +
+  coord_flip()
+```
+
+:::
+
+---
+
+## `r fontawesome::fa("book-open-reader")` Practice in Your Own Time
+
+**Text Mining with R** has an example comparing historical physics textbooks:
+
+> Discourse on Floating Bodies by Galileo Galilei, Treatise on Light by
+> Christiaan Huygens, Experiments with Alternate Currents of High
+> Potential and High Frequency by Nikola Tesla, and Relativity: The
+> Special and General Theory by Albert Einstein. All are available on the
+> Gutenberg project.
+
+Work your way through the [comparison of physics books](https://www.tidytextmining.com/tfidf.html#a-corpus-of-physics-texts). It is
+section 3.4.
+
+---
+
+## `r fontawesome::fa("link")` Resoruces: Thanks
+
+- [Dr. Mine Çetinkaya-Rundel](https://rstudio-education.github.io/datascience-box/course-materials/slides/u5-d01-text-analysis/u5-d01-text-analysis.html#1)
+- Dr. Julia Silge: [https://github.com/juliasilge/tidytext-tutorial](https://github.com/juliasilge/tidytext-tutorial) and
+[https://juliasilge.com/blog/animal-crossing/](https://juliasilge.com/blog/animal-crossing/)
+- Dr. Julia Silge and Dr. David Robinson:
+[https://www.tidytextmining.com/](https://www.tidytextmining.com/)
+
