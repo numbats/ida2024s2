@@ -23,6 +23,11 @@ strong {
   background-color: #e8e8e8;
 }
 
+/* Center plot produced by WebR */
+.qwebr-output-graph-area {
+  text-align: center;
+}
+
 /* Cancel the bold color. */
 .callout-title strong {
   color: black;
