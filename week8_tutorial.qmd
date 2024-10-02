@@ -59,14 +59,14 @@ We will use the Google extension SelectorGadget to highlight the web page elemen
 
 [https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb](https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb)
 
-- Open a web browser and go to: [https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/](https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/). Using the SelectorGadget extension, click on the title of a movie. It will look something like this below, where you can see ".titleColumn , a" appearing in the bottom panel. This text is what we will use below with `html_elements` to extract the movie names.
+- Open a web browser and go to: [https://web.archive.org/web/20220919144917/https://www.imdb.com/chart/top/](https://web.archive.org/web/20220919144917/https://www.imdb.com/chart/top/). Using the SelectorGadget extension, click on the title of a movie. It will look something like this below, where you can see ".titleColumn , a" appearing in the bottom panel. This text is what we will use below with `html_elements` to extract the movie names.
 
 - Use SelectorGadget to find the html-element used by the code chunks below for title `".titleColumn a"`, years `".secondaryInfo"`and scores `".imdbRating strong"`. This can be fiddly, and requires some **trial and error**. 
 
 #### 2. Scrape the top movies off IMDb. Note that the `html_elements()` correspond with the section of the page that we are going to extract.
 
 ```{r message=FALSE}
-page <- read_html("https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/top/") 
+page <- read_html("https://web.archive.org/web/20220919144917/https://www.imdb.com/chart/top/") 
 
 titles <- page %>%
   html_elements("___") %>%
@@ -383,7 +383,7 @@ tv_list
 We'll create a generic function, and pass in the URL for "Game of Thrones". This way, we can use the same code to get info about any show we want.
 
 ```{r}
-got_url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt0944947/"  # Game of thrones URL
+got_url <- "https://web.archive.org/web/20220919144942/https://www.imdb.com/title/tt0944947/"  # Game of thrones URL
 
 scrape_show_info <- function(x){
   
@@ -405,26 +405,22 @@ scrape_show_info <- function(x){
 ___(got_url)
 ```
 
-#### 3. Reuse your `scrape_show_info()` function to get the title and genre for the three most popular TV shows listed on https://web.archive.org/web/20220919175414/https://www.imdb.com/chart/tvmeter.
+#### 3. Reuse your `scrape_show_info()` function to get the title and genre for the three most popular TV shows listed on https://web.archive.org/web/20220919144942/https://www.imdb.com/chart/tvmeter.
 
-Hint: An easy way to find the URL you can click on the show from the IMDB website, and use the URL string after the title part for example: 'https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt1312171/'
+Hint: An easy way to find the URL you can click on the show from the IMDB website, and use the URL string after the title part for example: 'https://web.archive.org/web/20220919144942/https://www.imdb.com/title/tt1312171/'
 
 ```{r}
-url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt1312171/"
+url <- "https://web.archive.org/web/20220919144942/https://www.imdb.com/title/tt1312171/"
 scrape_show_info(url)
 
-url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt4052886/"
+url <- "https://web.archive.org/web/20220919144942/https://www.imdb.com/title/tt4052886/"
 scrape_show_info(url)
-
-url <- "https://web.archive.org/web/20220919175414/https://www.imdb.com/title/tt6905686/"
-scrape_show_info(url)
-
 ```
 
 #### 4. What you did in the last question was pretty manual. Rather than looking up the show URL manually, there's a better way we could do this automatically by scraping the list of shows and extracting the URLs. Then we can use our `scrape_show_info()` function to obtain information about the shows.
 
 ```{r}
-urls <- bow("https://web.archive.org/web/20220919175414/http://www.imdb.com/chart/tvmeter") %>% 
+urls <- bow("https://web.archive.org/web/20220919144942/http://www.imdb.com/chart/tvmeter") %>% 
   ___ %>% 
   html_elements(".titleColumn a") %>%
   # The link is in the attribute `href`

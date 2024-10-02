@@ -1,0 +1,1756 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 10: Cluster Analysis"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 10 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'tourr', 'GGally', 'ggdendro']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+library(langevitour)
+library(tourr)
+library(knitr)
+```
+
+---
+
+## `r fontawesome::fa("lightbulb")` Recap
+
+- Regular expression
+- Steps for text analysis
+- R packages for text analysis
+- Tidy text
+- Stop words
+- Sentiment of the text
+- Word Importance
+
+---
+
+## `r fontawesome::fa("sitemap")` Outline
+
+1. What is cluster analysis?
+2. Distance Measure
+3. K-means algorithm
+4. Hierarchical algorithms
+5. Dendrograms
+
+---
+
+## Cluster Analysis {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("people-group")` Cluster Analysis
+
+Cluster analysis is a statistical technique used to **group similar data points into clusters** according to their **similarity on the variables**.
+
+::: {.incremental}
+
+- Each cluster consists of data points that are **more similar to each other than to those in other clusters**. 
+- It helps identify groupings in data **without predefined labels**. 
+
+:::
+
+---
+
+## `r fontawesome::fa("people-group")` Cluster Analysis
+
+::: {.callout-note}
+
+## `r fontawesome::fa("briefcase")` Applications
+
+- Market segmentation: A retail company might group customers into different groups based on buying behavior, demographics, or preferences to target marketing strategies accordingly.
+
+- Social Network Analysis: Cluster analysis can be used to detect groups of users with similar connections or interactions on social media platforms.
+
+- Recommender Systems: Streaming services like Netflix or Spotify use cluster analysis to group users with similar preferences, enabling the system to offer personalized recommendations.
+
+- Genetics and Bioinformatics: Cluster analysis is applied to genetic data to find groups of genes with similar expression patterns.
+
+:::
+
+
+---
+
+## `r fontawesome::fa("briefcase")` Example: 2D Data
+
+2D data can be clustered manually when visualized on a scatter plot.
+
+How many clusters can you spot?
+
+```{r echo = FALSE}
+set.seed(2024)
+bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(0, 0), sigma = matrix(c(1, 0.7, 0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          mvtnorm::rmvnorm(n = 100, mean = c(12, 0), sigma = matrix(c(1, 0, 0, 1), ncol = 2)) %>%
+            as.data.frame(),
+          .id = "set") %>%
+  ggplot() +
+  geom_point(aes(V1, V2)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed()
+```
+
+---
+
+## `r fontawesome::fa("briefcase")` Example: 2D Data {visibility="uncounted"}
+
+2D data can be clustered manually when visualized on a scatter plot.
+
+How many clusters can you spot?
+
+```{r echo = FALSE}
+set.seed(2024)
+bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(0, 0), sigma = matrix(c(1, 0.7, 0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          mvtnorm::rmvnorm(n = 100, mean = c(12, 0), sigma = matrix(c(1, 0, 0, 1), ncol = 2)) %>%
+            as.data.frame(),
+          .id = "set") %>%
+  ggplot() +
+  geom_point(aes(V1, V2, col = set)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed() +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Dark2")
+```
+
+
+
+---
+
+## `r fontawesome::fa("briefcase")` Example: Olive Oil Samples from Italy
+
+::: {style="font-size:80%"}
+
+Manually clustering high-dimensional data is more challenging. Tools like a [**tour**](https://dicook.github.io/mulgar_book/1-intro.html) or a **scatter plot matrix** can help visualize it. How many clusters can you spot?
+
+
+:::
+
+
+::: {.columns}
+::: {.column width=50%}
+
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Tour
+
+```{r echo = FALSE}
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            pointSize = 2,
+            elementId = "tour-1")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+library(langevitour)
+library(tourr)
+langevitour(scale(olive[, -c(1, 2)]), 
+            pointSize = 2)
+```
+
+:::
+
+:::
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Scatter Plot Matrix
+
+```{r echo = FALSE, fig.height=6, fig.width=7.5}
+olive[, -c(1, 2)] %>%
+  scale() %>%
+  as.data.frame() %>%
+  GGally::ggscatmat(alpha = 0.1) +
+  theme_light() +
+  xlab("") +
+  ylab("")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+olive[, -c(1, 2)] %>%
+  scale() %>%
+  as.data.frame() %>%
+  GGally::ggscatmat(alpha = 0.1) +
+  theme_light() +
+  xlab("") +
+  ylab("")
+```
+
+:::
+
+:::
+:::
+
+
+---
+
+## `r fontawesome::fa("briefcase")` Example: Olive Oil Samples from Italy
+
+::: {style="font-size:80%"}
+
+Manually clustering high-dimensional data is more challenging. Tools like a [**tour**](https://dicook.github.io/mulgar_book/1-intro.html) or a **scatter plot matrix** can help visualize it. How many clusters can you spot?
+
+
+:::
+
+
+::: {.columns}
+::: {.column width=50%}
+
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Tour
+
+```{r echo = FALSE}
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = c("North", "South", "Sardinia")[olive$region],
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"),
+            elementId = "tour-2")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+library(langevitour)
+library(tourr)
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = c("North", "South", "Sardinia")[olive$region],
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"))
+```
+
+:::
+
+:::
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Scatter Plot Matrix
+
+```{r echo = FALSE, fig.height=6, fig.width=7.5}
+olive[, -c(1, 2)] %>%
+  scale() %>%
+  as.data.frame() %>%
+  mutate(region = c("North", "South", "Sardinia")[olive$region]) %>%
+  GGally::ggscatmat(alpha = 0.1, color = "region") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Dark2")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+olive[, -c(1, 2)] %>%
+  scale() %>%
+  as.data.frame() %>%
+  mutate(region = c("North", "South", "Sardinia")[olive$region]) %>%
+  GGally::ggscatmat(alpha = 0.1, color = "region") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Dark2")
+```
+
+:::
+
+
+
+
+:::
+:::
+
+---
+
+## We need clustering algorithms!  {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Distance Measure {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("ruler")` Distance Measure
+
+We want to group **similar data points** into clusters, but how do we determine if two data points are **"similar" or "close"**?
+
+::: {.fragment}
+
+A common choice is **Euclidean distance**: 
+
+$$d(A, B) = \sqrt{\sum_{k=1}^{p}(x_{ak} - x_{bk})^2} = \sqrt{(\boldsymbol{x}_A - \boldsymbol{x}_B)^\top(\boldsymbol{x}_A - \boldsymbol{x}_B)}$$
+where $\boldsymbol{x}_A$ and $\boldsymbol{x}_B$ are length-$p$ column vectors representing points A and B, respectively, and $x_{ak}$ and $x_{bk}$ denote the $k$-th elements of these vectors.
+
+:::
+
+::: {.fragment}
+
+::: {.callout-note}
+
+## `r fontawesome::fa("briefcase")` Examples
+
+- For point $A$: $(0, 1)$ and point $B$: $(2, 3)$, $d(A, B) = \sqrt{(0 - 2)^2 + (1 - 3)^2} = 2\sqrt{2}.$
+
+- For point $A$: $(0, 1, 2)$ and point $B$: $(2, 3, 4)$, $d(A, B) = \sqrt{(0 - 2)^2 + (1 - 3)^2 + (2 - 4)^2} = 2\sqrt{3}.$
+
+:::
+
+:::
+
+---
+
+## `r fontawesome::fa("ruler")` Distance Measure
+
+::: {.columns}
+::: {.column width=50%}
+
+
+::: {style="font-size: 80%"}
+
+Mahalanobis distance: $\sqrt{(\boldsymbol{x}_A - \boldsymbol{x}_B)^\top S^{-1}(\boldsymbol{x}_A - \boldsymbol{x}_B)}$
+
+:::
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+ggplot() +
+  geom_point(data = mvtnorm::rmvnorm(10000, mean = c(0, 0), sigma = diag(c(4.17, 0.668))) %>% 
+               as.data.frame(), 
+             aes(V1, V2), alpha = 0.02) +
+  ggforce::geom_ellipse(aes(x0 = 0, y0 = 0, a = 5, b = 2, angle = 0), linetype = 2) +
+  annotate("point", x = 0, y = 0) +
+  annotate("text", x = 0.5, y = 0.5, label = "A") +
+  annotate("point", x = 5, y = 0) +
+  annotate("text", x = 5.5, y = 0.5, label = "B") +
+  annotate("point", x = 0, y = 2) +
+  annotate("text", x = 0.5, y = 2.5, label = "C") +
+  annotate("point", x = 2, y = 1) +
+  annotate("text", x = 2.5, y = 1.5, label = "D") +
+  coord_fixed() +
+  theme_light() +
+  scale_x_continuous(breaks = seq(-10, 10)) +
+  ggtitle("D(A, B) = D(A, C) > D(A,D)") +
+  xlab("X") +
+  ylab("Y")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+ggplot() +
+  geom_point(data = mvtnorm::rmvnorm(10000, mean = c(0, 0), sigma = diag(c(4.17, 0.668))) %>% 
+               as.data.frame(), 
+             aes(V1, V2), alpha = 0.02) +
+  ggforce::geom_ellipse(aes(x0 = 0, y0 = 0, a = 5, b = 2, angle = 0), linetype = 2) +
+  annotate("point", x = 0, y = 0) +
+  annotate("text", x = 0.5, y = 0.5, label = "A") +
+  annotate("point", x = 5, y = 0) +
+  annotate("text", x = 5.5, y = 0.5, label = "B") +
+  annotate("point", x = 0, y = 2) +
+  annotate("text", x = 0.5, y = 2.5, label = "C") +
+  annotate("point", x = 2, y = 0) +
+  annotate("text", x = 2.5, y = 0.5, label = "D") +
+  coord_fixed() +
+  theme_light() +
+  scale_x_continuous(breaks = seq(-10, 10)) +
+  ggtitle("D(A, B) = D(A, C) > D(A,D)") +
+  xlab("X") +
+  ylab("Y")
+```
+
+:::
+
+
+
+
+
+
+:::
+::: {.column width=50%}
+
+::: {style="font-size: 80%"}
+
+Manhanttan distance: $\sum_{k=1}^p|x_{ak} - x_{bk}|$
+
+:::
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+ggplot() +
+  annotate("point", x = 0, y = 0) +
+  annotate("text", x = 0.1, y = 0.1, label = "A") +
+  annotate("point", x = 0, y = 2) +
+  annotate("text", x = 0.1, y = 2.1, label = "C") +
+  annotate("point", x = 1, y = 1) +
+  annotate("text", x = 1.1, y = 1.1, label = "B") +
+  annotate("point", x = 1, y = 2) +
+  annotate("text", x = 1.1, y = 2.1, label = "D") +
+  annotate("segment", x = 0, y = 0, xend = 0, yend = 1, linetype = 2) +
+  annotate("segment", x = 0, y = 1, xend = 1, yend = 1, linetype = 2) +
+  annotate("segment", x = 0, y = 1, xend = 0, yend = 2, linetype = 2) +
+  annotate("segment", x = 1, y = 1, xend = 1, yend = 2, linetype = 2) +
+  coord_fixed() +
+  theme_light() +
+  scale_x_continuous(breaks = seq(0, 1)) +
+  scale_y_continuous(breaks = seq(0, 2)) +
+  ggtitle("D(A, D) = 3 > D(A, B) = D(A, C) = 2") +
+  xlab("X") +
+  ylab("Y")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+ggplot() +
+  annotate("point", x = 0, y = 0) +
+  annotate("text", x = 0.1, y = 0.1, label = "A") +
+  annotate("point", x = 0, y = 2) +
+  annotate("text", x = 0.1, y = 2.1, label = "C") +
+  annotate("point", x = 1, y = 1) +
+  annotate("text", x = 1.1, y = 1.1, label = "B") +
+  annotate("point", x = 1, y = 2) +
+  annotate("text", x = 1.1, y = 2.1, label = "D") +
+  annotate("segment", x = 0, y = 0, xend = 0, yend = 1, linetype = 2) +
+  annotate("segment", x = 0, y = 1, xend = 1, yend = 1, linetype = 2) +
+  annotate("segment", x = 0, y = 1, xend = 0, yend = 2, linetype = 2) +
+  annotate("segment", x = 1, y = 1, xend = 1, yend = 2, linetype = 2) +
+  coord_fixed() +
+  theme_light() +
+  scale_x_continuous(breaks = seq(0, 1)) +
+  scale_y_continuous(breaks = seq(0, 2)) +
+  ggtitle("D(A, D) = 3 > D(A, B) = D(A, C) = 2") +
+  xlab("X") +
+  ylab("Y")
+```
+
+:::
+
+:::
+:::
+
+---
+
+## `r fontawesome::fa("ruler")` Rules of Distance Metric
+
+::: {.columns}
+::: {.column width=50%}
+
+A distance metric must follow these conditions:
+
+1. $D(A, A) = 0$
+2. $D(A, B) > 0$
+3. $D(A, B) = D(B, A)$
+4. $D(A, C) \leq D(A, B) + D(B, C)$
+
+Can you come out with your own distance metric?
+
+:::
+::: {.column width=50%}
+
+::: {.callout-tip}
+
+- Many divergences used in statistics, like the Kullback–Leibler divergence, do not qualify as metrics. 
+
+- **Euclidean distance is unsuitable for categorical variables**, and you'll explore alternative distance metrics in ETC3250/ETC5250.
+
+
+:::
+
+:::
+:::
+
+---
+
+## K-means Clustering {.transition-slide .center style="text-align: center;"}
+
+---
+
+## `r fontawesome::fa("people-group")` K-means Clustering
+
+K-means is an **iterative** clustering algorithm which **requires specifying the number of clusters ($k$) in advance**.
+
+The goal is to form $k$ clusters that minimize **within-cluster variance**, expressed as:
+
+$$\underset{\boldsymbol{S}}{\text{arg }\text{min}}\sum_{i=1}^{k}\underbrace{\sum_{\boldsymbol{x} \in S_i}\frac{1}{|S_i|}\lVert \boldsymbol{x} - \boldsymbol{\mu}_i\rVert^2}_{\text{variance of cluster } i},$$
+
+where $\boldsymbol{S} = \{S_1, S_2, \dots, S_k\}$ represents the $k$ clusters, $|S_i|$ is the number of points in cluster $i$, and $\boldsymbol{\mu}_i$ is the mean of the $i$-th cluster.
+
+---
+
+## `r fontawesome::fa("people-group")` K-means Clustering
+
+Smaller within-cluster variance indicates that the data points within each cluster are more tightly grouped together.
+
+::: {.columns}
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+set.seed(2024)
+dat <- bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.7, -0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(10, 10), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          .id = "set") %>%
+  mutate(cluster = c("Cluster 1", "Cluster 2")[as.integer(V2/V1 > 1) + 1])
+
+dat %>%
+  ggplot() +
+  geom_point(aes(V1, V2, col = cluster)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed() +
+  labs(col = "") +
+  ggtitle(dat %>% 
+            group_by(cluster) %>% 
+            summarise(var = var(V1) + var(V2)) %>% 
+            pull(var) %>% 
+            c(sum(.)) %>%
+            format(digits = 3) %>% 
+            {glue::glue("Within-cluster variance: {.[1]} + {.[2]} = {.[3]}")})
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+set.seed(2024)
+dat <- bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.7, -0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(10, 10), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          .id = "set") %>%
+  mutate(cluster = c("Cluster 1", "Cluster 2")[as.integer(V2/V1 > 1) + 1])
+
+dat %>%
+  ggplot() +
+  geom_point(aes(V1, V2, col = cluster)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed() +
+  labs(col = "") +
+  ggtitle(dat %>% 
+            group_by(cluster) %>% 
+            summarise(var = var(V1) + var(V2)) %>% 
+            pull(var) %>% 
+            c(sum(.)) %>%
+            format(digits = 3) %>% 
+            {glue::glue("Within-cluster variance: {.[1]} + {.[2]} = {.[3]}")})
+```
+
+:::
+
+:::
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+set.seed(2024)
+dat <- bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.7, -0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(10, 10), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          .id = "set") %>%
+  mutate(set = as.integer(set)) %>%
+  mutate(cluster = c("Cluster 1", "Cluster 2")[set])
+
+dat %>%
+  ggplot() +
+  geom_point(aes(V1, V2, col = cluster)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed() +
+  labs(col = "") +
+  ggtitle(dat %>% 
+            group_by(cluster) %>% 
+            summarise(var = var(V1) + var(V2)) %>% 
+            pull(var) %>% 
+            c(sum(.)) %>%
+            format(digits = 3) %>% 
+            {glue::glue("Within-cluster variance: {.[1]} + {.[2]} = {.[3]}")})
+```
+
+## `r fontawesome::fa("code")` Code
+
+
+```r
+set.seed(2024)
+dat <- bind_rows(mvtnorm::rmvnorm(n = 100, mean = c(5, 5), sigma = matrix(c(1, -0.7, -0.7, 1), ncol = 2)) %>%
+            as.data.frame(),
+          mvtnorm::rmvnorm(n = 100, mean = c(10, 10), sigma = matrix(c(1, -0.5, -0.5, 1), ncol = 2)) %>%
+            as.data.frame(), 
+          .id = "set") %>%
+  mutate(set = as.integer(set)) %>%
+  mutate(cluster = c("Cluster 1", "Cluster 2")[set])
+
+dat %>%
+  ggplot() +
+  geom_point(aes(V1, V2, col = cluster)) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y") +
+  coord_fixed() +
+  labs(col = "") +
+  ggtitle(dat %>% 
+            group_by(cluster) %>% 
+            summarise(var = var(V1) + var(V2)) %>% 
+            pull(var) %>% 
+            c(sum(.)) %>%
+            format(digits = 3) %>% 
+            {glue::glue("Within-cluster variance: {.[1]} + {.[2]} = {.[3]}")})
+```
+
+:::
+
+
+
+
+
+:::
+:::
+
+
+---
+
+## `r fontawesome::fa("fire")` NP-hard
+
+::: {.columns}
+::: {.column width=60%}
+
+It is **not feasible** to find every possible way to create $k$ clusters. How many ways are there to form $k$ clusters? 
+
+$$S(n, k) = \frac{1}{k!}\sum_{i = 0}^{k}(-1)^{k-i}{k \choose i}i^{n}.$$
+
+- Approximately **$6.573841 \times 10^{67}$** ways for just 100 observations and 5 clusters!
+
+However, comparing two solutions is **relatively straightforward** (see previous slide).
+
+
+:::
+::: {.column width=40%}
+
+::: {.callout-note}
+
+## K-means is an example of an **NP-hard problem**: 
+
+- A solution can be **verified in polynomial time**.
+
+- Finding the optimal solution may require an **exponential amount of time**.
+
+
+- NP-hard problems cannot be easily solved.
+
+- We often rely on **approximation methods** to find good solutions. 
+
+:::
+
+:::
+:::
+
+
+
+
+---
+
+##  `r fontawesome::fa("people-group")` Lloyd’s algorithm
+
+1. Randomly divide the data into $k$ groups.
+2. Calculate the means for each of the $k$ groups.
+3. Assign each observation $x_i$ to the group with the nearest mean.
+4. Repeat steps 2 and 3 until no observations are reassigned.
+
+
+---
+
+##  `r fontawesome::fa("briefcase")` Example
+
+Let's try to cluster 8 data points into 2 groups using the Lloyd's algorithm.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+kable(dat)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs)) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+
+```
+
+:::
+:::
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+Set $k = 2$, and randomly divide the data into 2 groups.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(1, 2, 2, 2, 1, 2, 1, 1))
+
+kable(dat)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = cluster)) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+
+```
+
+:::
+:::
+
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+Compute the means for each group. $\boldsymbol{\mu}_1 = (3.75, 6)$ and $\boldsymbol{\mu}_2 = (5.5, 5)$.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(1, 2, 2, 2, 1, 2, 1, 1))
+
+kable(dat)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = cluster)) +
+  geom_point(aes(mx, my, col = cluster), size = 5) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+
+```
+
+:::
+:::
+
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+
+Find the nearest mean for each observation.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(1, 2, 2, 2, 1, 2, 1, 1)) %>%
+  mutate(d1 = sqrt((x - 3.75)^2 + (y - 6)^2),
+         d2 = sqrt((x - 5.5)^2 + (y - 5)^2)) %>%
+  mutate(near = ifelse(d1 > d2, 2, 1))
+
+kable(dat, digits = 2)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = cluster)) +
+  geom_point(aes(mx, my, col = cluster), size = 5) +
+  geom_segment(aes(x, y, xend = c(3.75, 5.5)[near], yend = c(6, 5)[near]), arrow = arrow(length = unit(0.03, "npc")), linetype = 5, alpha = 0.5) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+
+```
+
+:::
+:::
+
+
+---
+
+
+## `r fontawesome::fa("briefcase")`  Example
+
+
+Update the memberships.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(1, 2, 2, 2, 1, 2, 1, 1)) %>%
+  mutate(d1 = sqrt((x - 3.75)^2 + (y - 6)^2),
+         d2 = sqrt((x - 5.5)^2 + (y - 5)^2)) %>%
+  mutate(near = ifelse(d1 > d2, 2, 1))
+
+kable(mutate(dat, cluster = near), digits = 2)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = factor(near))) +
+  geom_point(aes(mx, my, col = cluster), size = 5) +
+  geom_segment(aes(x, y, xend = c(3.75, 5.5)[near], yend = c(6, 5)[near]), arrow = arrow(length = unit(0.03, "npc")), linetype = 5, alpha = 0.5) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed() +
+  labs(col = "cluster")
+
+```
+
+:::
+:::
+
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+
+Recompute the means for each group. $\boldsymbol{\mu}_1 = (1.75, 7.75)$ and $\boldsymbol{\mu}_2 = (7.5, 3.25)$.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(2, 1, 2, 2, 2, 1, 1, 1))
+
+kable(dat, digits = 2)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = cluster)) +
+  geom_point(aes(mx, my, col = cluster), size = 5) +
+  geom_point(aes(3.75, 6, col = factor(1)), size = 5, alpha = 0.05) +
+  geom_point(aes(5.5, 5, col = factor(2)), size = 5, alpha = 0.05) +
+  annotate("segment", x = 3.75, y = 6, xend = 1.75, yend = 7.75, arrow = arrow(length = unit(0.03, "npc")), linetype = 5, alpha = 0.5) +
+  annotate("segment", x = 5.5, y = 5, xend = 7.5, yend = 3.25, arrow = arrow(length = unit(0.03, "npc")), linetype = 5, alpha = 0.5) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed() +
+  labs(col = "cluster")
+
+```
+
+:::
+:::
+
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+Find the nearest mean for each observation. No observations need to be reassigned, the algorithm has converged.
+
+::: {.columns}
+::: {.column width=50%}
+
+```{r echo = FALSE}
+dat <- data.frame(obs = c("A", "B", "C", "D", "E", "F", "G", "H"),
+                  x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7),
+                  cluster = c(2, 1, 2, 2, 2, 1, 1, 1)) %>%
+  mutate(d1 = sqrt((x - 3.75)^2 + (y - 6)^2),
+         d2 = sqrt((x - 5.5)^2 + (y - 5)^2)) %>%
+  mutate(near = ifelse(d1 > d2, 2, 1))
+
+kable(dat, digits = 2)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+
+dat %>%
+  mutate(cluster = factor(cluster)) %>%
+  group_by(cluster) %>%
+  mutate(mx = mean(x), my = mean(y)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_text(aes(x, y, label = obs, col = cluster)) +
+  geom_point(aes(mx, my, col = cluster), size = 5) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed() +
+  labs(col = "cluster")
+
+```
+
+:::
+:::
+
+---
+
+## `r fontawesome::fa("briefcase")`  Try K-means on `olive`
+
+::: {.columns}
+::: {.column width=50%}
+
+Although we know the data comes from three regions, we typically **do not have this information** beforehand for other datasets.
+
+::: {.callout-tip}
+
+- Experiment with different values of $k$.
+
+- Evaluate the solutions using plots of the data or in a two-way table.
+
+- Be sure to use `set.seed()` since the results can depend on the initialization.
+
+- Switch cluster labels to ensure the largest values appear on the diagonal of the two-way table.
+
+:::
+
+:::
+::: {.column width=50%}
+
+
+```{webr-r}
+#| editor-max-height: 400
+set.seed(12345)
+result <- kmeans(scale(olive[, -c(1, 2)]), 
+                 centers = 3)
+table(true = olive$region, 
+      kmeans = result$cluster)
+# table(true = olive$region, 
+#       kmeans = c(2, 3, 1)[result$cluster])
+```
+
+
+
+
+:::
+:::
+
+---
+
+##  `r fontawesome::fa("magnifying-glass")` Check Group Means
+
+```{webr-r}
+#| editor-max-height: 400
+#| editor-font-scale: 0.5
+as_tibble(result$centers) %>%
+  mutate(cluster = factor(1:nrow(result$centers))) %>%
+  pivot_longer(-cluster, names_to = "variable", values_to = "mean") %>%
+  ggplot() +
+  geom_line(aes(variable, mean, group = cluster, col = cluster)) +
+  theme_light() +
+  scale_color_brewer(palette = "Dark2") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+
+---
+
+##  `r fontawesome::fa("magnifying-glass")`  Examine Results in 2D
+
+Is it working well? Try using different variables for x and y.
+
+```{webr-r}
+#| editor-max-height: 400
+scale(olive[, -c(1, 2)]) %>%
+  as_tibble() %>%
+  ggplot() +
+  geom_point(aes(oleic, arachidic, col = factor(result$cluster))) +
+  labs(col = "cluster")
+```
+
+---
+
+##  `r fontawesome::fa("magnifying-glass")`  Examine Results Using Tour
+
+::: {.columns}
+::: {.column width=50%}
+
+> The algorithm will tend to segment the data into **roughly equal sized**, or **spherical clusters**, and thus will work well **if the clusters are separated and equally spherical in shape**.
+
+> If gaps appear within a single cluster, it suggests that k-means **has failed to capture important underlying cluster structure**.
+
+by [Interactively exploring high-dimensional data and models in R (Di Cook and Ursula Laa)](https://dicook.github.io/mulgar_book/9-kmeans.html#examining-results-in-high-dimensions)
+
+:::
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Tour
+
+```{r echo = FALSE}
+set.seed(12345)
+result <- kmeans(scale(olive[, -c(1, 2)]), 
+                 centers = 3)
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = result$cluster,
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"),
+            elementId = "tour-3")
+```
+
+## `r fontawesome::fa("code")` Code
+
+
+```r
+set.seed(12345)
+result <- kmeans(scale(olive[, -c(1, 2)]), 
+                 centers = 3)
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = result$cluster,
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"))
+```
+
+:::
+
+
+
+
+
+:::
+:::
+
+---
+
+##  `r fontawesome::fa("filter")`  Choosing Clusters
+
+There is no correct number of clusters. Choosing the number of clusters **depends on the context.**
+
+::: {.columns}
+::: {.column width=50%}
+
+::: {.callout-note}
+
+## Do not choose too many clusters:
+
+A firm developing a different marketing strategy for each market
+segment may not have the resources to develop a large number of
+unique strategies.
+
+:::
+
+:::
+::: {.column width=50%}
+
+::: {.callout-note}
+
+## Do not choose too few clusters:
+
+If you choose the 1-cluster solution there is no point in doing
+clustering at all.
+
+:::
+
+:::
+:::
+
+
+
+---
+
+##  `r fontawesome::fa("graduation-cap")`  Cluster Statistics
+
+The `fpc` package offers various cluster statistics that can assist you in comparing cluster solutions and determining the optimal number of clusters. 
+
+For more details, see `?cluster.stats()`.
+
+::: {.callout-note}
+
+## Some commonly used cluster statistics
+
+- `within.cluster.ss`: Sum of squares within clusters. A lower value is better. This metric always decreases with more clusters, so focus on larger drops.
+- `wb.ratio`: The ratio of the average distance within clusters to the average distance between clusters. A lower value is preferable. This also decreases with more clusters, so choose when there are significant drops.
+- `dunn`: The minimum separation between clusters divided by the maximum cluster diameter. A higher value is better.
+- `ch`: The Calinski-Harabasz Index, which should also be high for a good clustering.
+
+
+:::
+
+## Let's have a 15 mins break!  {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Hierarchical Clustering {.transition-slide .center style="text-align: center;"}
+
+---
+
+##  `r fontawesome::fa("tree")`  Hierarchical Clustering
+
+There are two types of hierarchical clustering:
+
+- **Agglomerative**: Start with each observation in its own cluster, and progressively **merge** them until all observations are grouped into a single cluster.
+- **Divisive** (not covered in this unit): Begin with all observations in one cluster, and sequentially **split** them until each observation is in its own cluster.
+
+---
+
+## `r fontawesome::fa("tree")`  Hierarchical Clustering
+
+Hierarchical clustering is a recursive algorithm:
+
+1. Identify the **two closest data points** in the dataset.
+2. **Merge** them to create a new "data point."
+3. Repeat steps 1 and 2 until only one "data point" remains.
+
+::: {.callout-warning}
+
+## Distance between sets
+
+We know how to calculate the distance between two individual points, but how do we compute the distance between a point and a set of points once they are merged?
+
+For instance, how do we calculate the distance between point A and the set (B, C)? Or between the sets (A, C) and (B, D)?
+
+
+:::
+
+
+---
+
+##  `r fontawesome::fa("link")` Linkage
+
+Linkage methods can be used to measure dissimilarity between sets of observations:
+
+- **Single**: The minimum distance between points in different clusters.
+- **Complete**: The maximum distance between points in different clusters.
+- **Average**: The average distance between points in different clusters.
+- **Centroid**: The distance between the centroids (averages) of different clusters.
+- **Wards**: Instead of merging the two closest data points, it merges the two points that minimize the total within-cluster variance.
+
+---
+
+## `r fontawesome::fa("link")`  Linkage
+
+
+
+```{r echo = FALSE}
+knitr::include_graphics("images/linkage.png")
+```
+
+
+\- Images from ETC3250/ETC5250 lecture 9.
+
+---
+
+## `r fontawesome::fa("briefcase")`  Example
+
+Hierarchical clustering begins by computing the **distance matrix** for the dataset. 
+
+Select an **appropriate distance metric** at this stage. Here, we are using Euclidean distance.
+
+::: {.columns}
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7)) %>%
+  dist(upper = TRUE) %>%
+  as.matrix()
+
+rownames(dat) <- c("A", "B", "C", "D", "E", "F", "G", "H")
+kable(dat, digits = 2, col.names = c("A", "B", "C", "D", "E", "F", "G", "H"), row.names = TRUE)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = c("A", "B", "C", "D", "E", "F", "G", "H"))) +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+```
+
+:::
+:::
+
+---
+
+
+##  `r fontawesome::fa("briefcase")` Example
+
+Then choose a linkage and starts finding two closest data points. Here we use single linkage.
+
+::: {.columns}
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7)) %>%
+  dist(upper = TRUE) %>%
+  as.matrix()
+
+rownames(dat) <- c("A", "B", "C", "D", "E", "F", "G", "H")
+kable(dat, digits = 2, col.names = c("A", "B", "C", "D", "E", "F", "G", "H"), row.names = TRUE)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = c("A", "B", "C", "D", "E", "F", "G", "H"))) +
+  annotate("segment", x = 8, y = 2, xend = 7, yend = 2, linetype = 2, col = "red") +
+  annotate("text", x = 8, y = 2, label = "A", col = "red") +
+  annotate("text", x = 7, y = 2, label = "C", col = "red") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+```
+
+:::
+:::
+
+
+---
+
+
+## `r fontawesome::fa("briefcase")`  Example
+
+Update the distance matrix using single linkage.
+
+::: {.columns}
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7)) %>%
+  dist(upper = TRUE) %>%
+  as.matrix() %>%
+  as.data.frame()
+
+dat[1, ] <- ifelse(as.numeric(dat[1, ]) < as.numeric(dat[3, ]), as.numeric(dat[1, ]), as.numeric(dat[3, ]))
+dat <- dat[-3, -3]
+dat[, 1] <- as.numeric(dat[1, ])
+
+rownames(dat) <- c("(A,C)", "B", "D", "E", "F", "G", "H")
+kable(dat, digits = 2, col.names = c("(A,C)", "B", "D", "E", "F", "G", "H"), row.names = TRUE)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = c("A", "B", "C", "D", "E", "F", "G", "H"))) +
+  annotate("segment", x = 8, y = 2, xend = 7, yend = 2, linetype = 2, col = "red") +
+  annotate("text", x = 8, y = 2, label = "A", col = "red") +
+  annotate("text", x = 7, y = 2, label = "C", col = "red") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+```
+
+:::
+:::
+
+
+---
+
+
+## `r fontawesome::fa("briefcase")`  Example
+
+Find two closest data points. 
+
+::: {.columns}
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7)) %>%
+  dist(upper = TRUE) %>%
+  as.matrix() %>%
+  as.data.frame()
+
+dat[1, ] <- ifelse(as.numeric(dat[1, ]) < as.numeric(dat[3, ]), as.numeric(dat[1, ]), as.numeric(dat[3, ]))
+dat <- dat[-3, -3]
+dat[, 1] <- as.numeric(dat[1, ])
+
+rownames(dat) <- c("(A,C)", "B", "D", "E", "F", "G", "H")
+kable(dat, digits = 2, col.names = c("(A,C)", "B", "D", "E", "F", "G", "H"), row.names = TRUE)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = c("A", "B", "C", "D", "E", "F", "G", "H"))) +
+  annotate("segment", x = 8, y = 2, xend = 7, yend = 2, linetype = 2, col = "red") +
+  annotate("segment", x = 1, y = 10, xend = 3, yend = 10, linetype = 2, col = "red") +
+  annotate("text", x = 8, y = 2, label = "A", col = "red") +
+  annotate("text", x = 7, y = 2, label = "C", col = "red") +
+  annotate("text", x = 1, y = 10, label = "G", col = "red") +
+  annotate("text", x = 3, y = 10, label = "F", col = "red") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+```
+
+:::
+:::
+
+
+---
+
+
+## `r fontawesome::fa("briefcase")`  Example
+
+Update the distance matrix using single linkage.
+
+::: {.columns}
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7)) %>%
+  dist(upper = TRUE) %>%
+  as.matrix() %>%
+  as.data.frame()
+
+dat[1, ] <- ifelse(as.numeric(dat[1, ]) < as.numeric(dat[3, ]), as.numeric(dat[1, ]), as.numeric(dat[3, ]))
+dat <- dat[-3, -3]
+dat[, 1] <- as.numeric(dat[1, ])
+
+dat[5, ] <- ifelse(as.numeric(dat[5, ]) < as.numeric(dat[6, ]), as.numeric(dat[5, ]), as.numeric(dat[6, ]))
+dat <- dat[-6, -6]
+dat[, 5] <- as.numeric(dat[5, ])
+
+
+rownames(dat) <- c("(A,C)", "B", "D", "E", "(F,G)", "H")
+kable(dat, digits = 2, col.names = c("(A,C)", "B", "D", "E", "(F,G)", "H"), row.names = TRUE)
+```
+
+:::
+::: {.column width=50%}
+
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+
+dat %>%
+  ggplot() +
+  geom_text(aes(x, y, label = c("A", "B", "C", "D", "E", "F", "G", "H"))) +
+  annotate("segment", x = 8, y = 2, xend = 7, yend = 2, linetype = 2, col = "red") +
+  annotate("segment", x = 1, y = 10, xend = 3, yend = 10, linetype = 2, col = "red") +
+  annotate("text", x = 8, y = 2, label = "A", col = "red") +
+  annotate("text", x = 7, y = 2, label = "C", col = "red") +
+  annotate("text", x = 1, y = 10, label = "G", col = "red") +
+  annotate("text", x = 3, y = 10, label = "F", col = "red") +
+  theme_light() +
+  xlab("") +
+  ylab("") +
+  scale_x_continuous(breaks = seq(0, 10, 2)) +
+  scale_y_continuous(breaks = seq(0, 10, 2)) +
+  coord_fixed()
+```
+
+:::
+:::
+
+---
+
+## `r fontawesome::fa("link")`  Different Linkage Results
+
+```{r echo = FALSE}
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1),
+                  y = c(2, 4, 2, 4, 5, 10, 10, 7))
+dat %>%
+  `rownames<-`( c("A", "B", "C", "D", "E", "F", "G", "H")) %>%
+  dist() %>%
+  hclust(method = "single") %>%
+  ggdendro::ggdendrogram(rotate = TRUE) +
+  ggtitle("Single") -> p1
+
+dat %>%
+  `rownames<-`( c("A", "B", "C", "D", "E", "F", "G", "H")) %>%
+  dist() %>%
+  hclust(method = "complete") %>%
+  ggdendro::ggdendrogram(rotate = TRUE) +
+  ggtitle("Complete") -> p2
+
+dat %>%
+  `rownames<-`( c("A", "B", "C", "D", "E", "F", "G", "H")) %>%
+  dist() %>%
+  hclust(method = "average") %>%
+  ggdendro::ggdendrogram(rotate = TRUE) +
+  ggtitle("Average") -> p3
+
+dat %>%
+  `rownames<-`( c("A", "B", "C", "D", "E", "F", "G", "H")) %>%
+  dist() %>%
+  hclust(method = "centroid") %>%
+  ggdendro::ggdendrogram(rotate = TRUE) +
+  ggtitle("Centroid") -> p4
+
+dat %>%
+  `rownames<-`( c("A", "B", "C", "D", "E", "F", "G", "H")) %>%
+  dist() %>%
+  hclust(method = "ward.D2") %>%
+  ggdendro::ggdendrogram(rotate = TRUE) +
+  ggtitle("Wards") -> p5
+
+patchwork::wrap_plots(p1, p2, p3, p4, p5, nrow = 2)
+```
+
+
+---
+
+## `r fontawesome::fa("tree")`  Dendrogram
+
+- Each **leaf** of the dendrogram represents an individual observation.
+- Leaves **merge into branches**, and branches can merge with either leaves or other branches.
+- Merges that occur **lower in the tree** indicate that the groups of observations are merged earlier and are more similar to one another.
+
+::: {.callout-important}
+
+We can **cut the tree** to partition the data into $k$ clusters
+
+This allows us to obtain **different clustering solutions** from a single tree!
+
+:::
+
+---
+
+## `r fontawesome::fa("tree")`  Cut the Tree Using Dendrogram
+
+```{webr-r}
+#| editor-max-height: 400
+dat <- data.frame(x = c(8, 2, 7, 10, 5, 3, 1, 1), y = c(2, 4, 2, 4, 5, 10, 10, 7))
+rownames(dat) <- c("A", "B", "C", "D", "E", "F", "G", "H")
+dat %>%
+  dist(method = "euclidean") %>%
+  hclust(method = "ward.D2") %>%
+  ggdendro::ggdendrogram() +
+  geom_hline(yintercept = 10, linetype = 2)
+```
+
+---
+
+## `r fontawesome::fa("scale-balanced")`  Stability of the Clustering Solution
+
+One criterion for stability is that **the number of clusters remains consistent over a wide range of tolerance levels**. 
+
+In general, look for a **long stretch of tolerance** where the number of clusters does not change.
+
+::: {.callout-note}
+
+## Tolerance level
+
+- Consider the axis representing distance as a measure of **"tolerance level"**. 
+
+- When the distance between two clusters falls within this tolerance, they are merged into a single cluster. 
+
+- As the tolerance increases, more clusters are merged, resulting in fewer overall clusters.
+
+
+:::
+
+
+---
+
+##  `r fontawesome::fa("briefcase")` Try Hierarchical Clustering on `olive`
+
+```{webr-r}
+#| editor-max-height: 400
+result <- dist(scale(olive[, -c(1, 2)])) %>%
+  hclust(method = "ward.D2") 
+table(true = olive$region, hclust = cutree(result, 3))
+ggdendrogram(result, labels = FALSE)
+```
+
+---
+
+## `r fontawesome::fa("magnifying-glass")`  Examine Results Using Tour
+
+::: {.columns}
+::: {.column width=50%}
+
+
+
+Read [this chapter](https://dicook.github.io/mulgar_book/8-hierarchical.html) about common patterns that will confuse clustering algorithm.
+
+
+:::
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Tour
+
+```{r echo = FALSE}
+result <- dist(scale(olive[, -c(1, 2)])) %>%
+  hclust(method = "ward.D2") 
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = cutree(result, 3),
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"))
+```
+
+
+## `r fontawesome::fa("code")` Code
+
+```r
+result <- dist(scale(olive[, -c(1, 2)])) %>%
+  hclust(method = "ward.D2") 
+langevitour(olive[, -c(1, 2)] %>% scale(), 
+            group = cutree(result, 3),
+            pointSize = 2,
+            levelColors = RColorBrewer::brewer.pal(3, "Dark2"))
+```
+
+:::
+
+
+:::
+:::
+
+
+
+
+
+---
+
+## `r fontawesome::fa("comment")`  Conclusions
+
+Hierarchical Clustering requires 4 steps:
+
+1. Standardize the data if they are in different units (`scale()`).
+2. Compute distance matrix (`dist()`).
+3. Choose an agglomeration method like single linkage.
+4. Run cluster analysis (`hclust()`) and visualize it (`ggdendrogram()`).
+
+Remember to **profile the clusters** and to provide insight into **what these clusters may represent**.
