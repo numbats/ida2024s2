@@ -1,0 +1,286 @@
+---
+title: "ETC1010/5510 Tutorial 10 Solution"
+subtitle: "Introduction to Data Analysis"
+author: "Patrick Li"
+date: "Sep 30, 2024"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  error = FALSE, 
+  out.width = "70%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3)
+set.seed(6)
+filter <- dplyr::filter
+```
+
+
+## `r emo::ji("target")` Workshop Objectives
+This workshops will be a bit different to what we've done before. Effective clustering does not work well with blind application of techniques. In this workshop, you will try to gain an understanding of
+
+- what types of questions you can answer with cluster analysis;
+- how to interpret the output of cluster analysis; 
+- how to choose between clustering methods. 
+
+
+## `r emo::ji("wrench")` Instructions
+
+
+Install the necessary packages.
+
+```{r}
+library(tidyverse)
+library(ggdendro)
+```
+
+ 
+## 🥡 Exercise: Understanding Cluster Analysis
+
+You're unsettled by the current political and economic situation in the United States, so you obtain the following dataset and wish to see if their is some relationship that explains the occurrence of violent crime in the United States. 
+
+```{r}
+load("data/USArrests_simp.Rdata")
+arrest <- df_new
+rm(df_new)
+```
+
+The dataset contains statistics on arrests per 100k residents for assault and murder in each of the 50 states. 
+
+You want to understand the relationship between the murder rate, assault rate, and the urban population across the United States. 
+
+### EDA
+
+First, complete the following basic EDA to try and get some understanding of the data. 
+
+1. Using graphical means, analyse the relationship between Assaults and Murders, controlling for the effect of population.  Do this in `ggplot` using a scatterplot and by choosing the size of the points via `UrbanPop`.
+  - Describe the relationship between assaults and murders in words. **[ANS: The relationship between assaults and murders itself is linear.]** 
+  - What do you notice about the relationship between population size and murders/assaults? **[ANS: However, when we overlay the population size in the figure, we see that the population size does not have a linear impact matter so much, in the sense that there are large and small populations with high murder and assault rates. For instance, North Carolina and Mississippi both have small populations but high murders and assaults]**
+  
+```{r}
+p <- arrest %>%
+  ggplot() +
+  geom_point(aes(Murder, Assault, size = UrbanPop, label = States),
+             alpha = 0.3)
+
+plotly::ggplotly(p)
+```
+  
+
+2. Another way to analyze the relationship between assaults and murders, conditional on population size, is to break up the population size into categories based on the quantiles of the variable `UrbanPop`, and then analyze the distribution across those categories. This can be done using  
+
+```{r}
+arrest <- arrest %>%
+  mutate(category = cut(UrbanPop, 
+                        breaks = quantile(UrbanPop, c(0, 1/3 , 2/3 , 1)), 
+                        labels = c("low", "middle", "high"), 
+                        include.lowest = TRUE))
+```
+  
+  - Report the mean number of assaults and murders by category. What do you notice? **[ANS: It seems that there are more murders and assaults in high population states]**
+  
+```{r}
+arrest %>% 
+  select(-States, -South) %>% 
+  group_by(category) %>% 
+  summarise_all(mean)
+```
+  
+  - Plot and describe the relationships between murders/assaults by category using boxplots. 
+
+```{r}
+p1 <- arrest %>%
+  ggplot(aes(category, Murder)) +
+  geom_boxplot()
+
+p2 <- arrest %>%
+  ggplot(aes(category, Assault)) +
+  geom_boxplot()
+
+patchwork::wrap_plots(p1, p2, ncol = 2)
+```
+  
+  
+  - Contrast your answers from the two previous questions. **[ANS: When one just looks at averages, it seems that lower population states have lower murders and assaults. However, when we look at the boxplots we see that there is much more to the story; namely, the states with low population have a much more spread out distribution, and the variability of these values is much higer]**
+  
+  - Visualise the relationship between murders/assaults, conditional on the category for `UrbanPop`. What do you notice about the low population states? **[ANS: the low population states striate nicely into at most two fairly disinct clusters: high-(murder, assaults) with low populations, and low-(murders, assults) with low populations. This is a good indication that clustering will work well, and that the low population states seems to have something in common]** 
+
+```{r}
+# Controlling for UrbanPop
+p <- arrest %>% 
+  ggplot() + 
+  geom_point(aes(Murder, Assault, label = States, col = category))
+
+plotly::ggplotly(p)
+```
+
+3. Are the relationships you've found in part 2 the same for states that are in the southern United States, versus elsewhere? To answer this, use the following definition of "southern states", and answer the following questions. 
+
+```{r}
+south <- c("Alabama", "Arkansas", "Delaware", "Florida", "Georgia", "Kentucky", 
+           "Louisiana", "Maryland", "Mississippi", "North Carolina", "Oklahoma", 
+           "South Carolina", "Tennessee", "Texas", "Virginia", "West Virginia")
+```
+  
+  - Compare the means of assaults/murders for southern states against the totals from earlier. What do you notice? **[ANS: You notice that the southern states have much higher rates of assaults/murders than the rest of the country... ]**
+  
+```{r}
+# look at some statistics for these variables by South
+arrest %>%
+  select(-States, -category) %>%
+  group_by(South) %>%
+  summarise_all(mean)
+```
+  
+  - Visualise the relationship between murders/assaults, conditional on the category for `UrbanPop`, and use different shapes for southern states to the remaining states; i.e., use `shape = xxx` inside `geom_point`.
+  
+```{r}
+p <- arrest %>%
+  ggplot() +
+  geom_point(aes(Murder, Assault, col = category, shape = South, label = States))
+
+plotly::ggplotly(p)
+```
+  
+
+### Clustering
+
+Clearly, there is a relationship between the size of the population, its geographic location, and the number of murders and assaults. However, as our graphical analysis demonstrated, there is not a single relationship. So, it may be best to try and cluster these observations. 
+
+We will consider two different types of clustering: hierarchical and k-means.
+
+### Hierarchical Clustering. 
+
+1. Use hierarchical clustering and complete linkage to cluster the data. 
+  - Keep only numerical variables. The dummy variable `South` can also be kept.
+  - We do not need to standardize the variables because the solution will be better without scaling.
+  - Compute the distance matrix using Euclidean distance.
+  - Create the dendogram. 
+  - Compare the solutions across different clusters. Which solution seems most stable? **[ANS: to understand which solutions are most stable, we need to look at the tolerance for the dendiogram across the different cluster splits. When we cluster using 3 and 4, there is a persistent cluster that contains the entire left branch of the tree. When we move to five clusters, this same cluster splits into two separate pieces. The additional tolerance decrease clusters 4 and five also seems to be quite minimial. Hence, 3 or 4 clusters seems more stable than five or more.]**
+  
+```{r}
+hclust_result <- arrest %>%
+  select(-States, -category) %>%
+  `rownames<-`(arrest$States) %>%
+  dist(method = "euclidean") %>%
+  hclust(method = "complete")
+
+ggdendrogram(hclust_result) +
+  geom_hline(yintercept = 200, linetype = 2) +
+  geom_hline(yintercept = 150, linetype = 2) +
+  geom_hline(yintercept = 95, linetype = 2) +
+  geom_hline(yintercept = 80, linetype = 2)
+```
+  
+4. Cut the tree by 4 clusters. Use the output to answer the following questions
+  - Plot the relationship between Assault and Murder again, but choose the color of the plot corresponding to the Cluster in which the observation lies. What pattern do you see?
+  
+```{r}
+p <- arrest %>%
+  ggplot() +
+  geom_point(aes(x = Murder, 
+                 y = Assault, 
+                 col = factor(cutree(hclust_result, 4)),
+                 size = category,
+                 label = States),
+             alpha = 0.6) +
+  labs(col = "cluster")
+
+plotly::ggplotly(p)
+```
+
+  - Now, overlay the previous plot with the geographic information (South) by choosing the shape of the plot to depend on the variable South. What do you notice about the southern states? 
+  
+```{r}
+p <- arrest %>%
+  ggplot() +
+  geom_point(aes(x = Murder, 
+                 y = Assault, 
+                 col = factor(cutree(hclust_result, 4)),
+                 size = category,
+                 shape = South,
+                 label = States),
+             alpha = 0.6) +
+  labs(col = "cluster")
+
+plotly::ggplotly(p)
+```
+  
+
+### K-means Clustering. 
+
+
+1. Obtain the K-means clusters with $k=3$ and $k=4$ clusters. 
+
+```{r}
+kmeans_result_3 <- arrest %>%
+  select(-States, -category) %>%
+  `rownames<-`(arrest$States) %>%
+  kmeans(centers = 3)
+
+kmeans_result_4 <- arrest %>%
+  select(-States, -category) %>%
+  `rownames<-`(arrest$States) %>%
+  kmeans(centers = 4)
+```
+
+
+2. Plot the different cluster membership totals in each cluster by category using `geom_bar()`. 
+
+```{r}
+p1 <- arrest %>%
+  mutate(cluster = kmeans_result_3$cluster) %>%
+  ggplot() +
+  geom_bar(aes(x = cluster, fill = category), position = "dodge") +
+  ggtitle("Number of observations in each cluster by category",
+          subtitle = "(3-cluster solution)")
+
+p2 <- arrest %>%
+  mutate(cluster = kmeans_result_4$cluster) %>%
+  ggplot() +
+  geom_bar(aes(x = cluster, fill = category), position = "dodge") +
+  ggtitle("Number of observations in each cluster by category",
+          subtitle = "(4-cluster solution)")
+
+patchwork::wrap_plots(p1, p2, ncol = 2)
+```
+
+
+3. For $k=4$ clusters, plot the relationship between Assault and Murder again, but choose the color of the plot corresponding to the Cluster in which the observation lies. 
+
+```{r}
+p <- arrest %>%
+  mutate(cluster = factor(kmeans_result_4$cluster)) %>%
+  ggplot() +
+  geom_point(aes(x = Murder, y = Assault, col = cluster, size = category, label = States),
+             alpha = 0.6) +
+  labs(col = "cluster")
+
+plotly::ggplotly(p)
+```
+
+  - Now, overlay the geographic indicator. How do the results differ from the other clustering algorithm? **[ANS: The clusters are more homogenous, in the sense that points which are located more closely together in space seem to be more reliably clustered. ]**
+  
+```{r}
+p <- arrest %>%
+  mutate(cluster = factor(kmeans_result_4$cluster)) %>%
+  ggplot() +
+  geom_point(aes(x = Murder, y = Assault, col = cluster, size = category, shape = South, label = States),
+             alpha = 0.6) +
+  labs(col = "cluster")
+
+plotly::ggplotly(p)
+```
+
+  
+3. Which algorithm gives more meaningful interpretations to the data? Why? **[ANS: It is important to relay to the students that there is no "right" or "wrong" answer with clustering, it is all about finding useful interpretation and suggesting useful avenues for future discussion and understanding. However, from the standpoint of learning more about our data, it is clear that the hierarchical clustering method delivers more meaningful/interpretable clusters here than K-means. In addition, note that clusters 2 is composed mainly of high population states that also have high assaults/murders, while cluster 4 is almost exclusively states with low population, and assaults/murders. These clusters have a much nice interpretation than those in the K-means]**

@@ -1,0 +1,996 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 11: Linear Modeling"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 11 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'broom', 'patchwork', 'gapminder']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+library(broom)
+```
+
+---
+
+## `r fontawesome::fa("lightbulb")` Recap
+
+- What is cluster analysis?
+- Distance Measure
+- K-means algorithm
+- Hierarchical algorithms
+- Dendrograms
+
+---
+
+## `r fontawesome::fa("sitemap")` Outline
+
+1. What is Modeling?
+2. Correlation
+3. Simple Linear Regression
+4. Classical Normal Linear Regression Model
+5. Regression Model Diagnostics
+6. Model Selection
+
+---
+
+## Modeling {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Working with A Single Variable
+
+
+::: {.columns}
+::: {.column width=50%}
+
+When analyzing a **single numerical variable**, we can use numerical statistics to gain insights into key attributes such as
+
+- **central tendency**, e.g. mean, median, and mode
+- **dispersion**, e.g. variance, standard deviation and IQR
+- **shape**, e.g. skewness and kurtosis
+
+Alternatively, we can use graphical tools like **box plots** and **density plots** to represent these characteristics.
+
+
+:::
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+maxt <- read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  pull(maxt)
+
+p1 <- ggplot() +
+  geom_boxplot(aes(maxt)) +
+  xlab(expression(degree*C)) +
+  theme_light()
+
+p2 <- ggplot() +
+  geom_density(aes(maxt)) +
+  xlab(expression(degree*C)) +
+  theme_light()
+
+patchwork::wrap_plots(p1, p2) +
+  patchwork::plot_annotation(title = "Maximum daily temperature for bushfires in Victoria between 2015 and 2018",
+                             theme = theme_light(base_size = 10))
+```
+
+
+## `r fontawesome::fa("code")` Code
+
+```r
+maxt <- read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  pull(maxt)
+
+p1 <- ggplot() +
+  geom_boxplot(aes(maxt)) +
+  xlab(expression(degree*C)) +
+  theme_light()
+
+p2 <- ggplot() +
+  geom_density(aes(maxt)) +
+  xlab(expression(degree*C)) +
+  theme_light()
+
+patchwork::wrap_plots(p1, p2) +
+  patchwork::plot_annotation(title = "Maximum daily temperature for bushfires in Victoria between 2015 and 2018")
+```
+
+:::
+
+:::
+
+:::
+
+
+
+
+---
+
+## Bivariate Relationships
+
+
+::: {.columns}
+::: {.column width=50%}
+
+When working with **two numerical variables**, a **scatterplots** is a natural choice to explore **association** between them.
+
+It helps identify whether the variables are:
+
+- **Positively associated**: as one variable increases, the other also increases
+- **Negatively associated**: as one variable increases, the other decreases
+- **No association**: the data points are scattered randomly, showing no clear relationship
+- ...
+
+:::
+
+::: {.column width=50%}
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  ggplot() +
+  geom_point(aes(mint, maxt), alpha = 0.6) +
+  xlab(expression(Minimum~temperature~(degree*C))) +
+  ylab(expression(Maximum~temperature~(degree*C))) +
+  theme_light() +
+  ggtitle("Daily maximum and minimum temperature for bushfires \nin Victoria between 2015 and 2018")
+```
+
+
+## `r fontawesome::fa("code")` Code
+
+```r
+read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  ggplot() +
+  geom_point(aes(mint, maxt), alpha = 0.6) +
+  xlab(expression(Minimum~temperature~(degree*C))) +
+  ylab(expression(Maximum~temperature~(degree*C))) +
+  theme_light() +
+  ggtitle("Daily maximum and minimum temperature for bushfires \nin Victoria between 2015 and 2018")
+```
+
+:::
+
+:::
+
+:::
+
+---
+
+## Correlation
+
+**Correlation is the linear association** between two variables, **ranging from $-1$ to $1$**. 
+
+For two variables, $X$ and $Y$, the **correlation coefficient $r$** is calculated as follows:
+
+$$r_{xy} = \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2} \sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}} = \frac{S_{xy}}{S_x S_y},$$
+
+where $S_{xy}$ represents the **biased sample covariance** between $X$ and $Y$, and $S_x$ and $S_y$ denote the **biased standard deviations** of $X$ and $Y$, respectively.
+
+::: {.callout-tip}
+
+- In correlation, $x$ and $y$ are interchangeable, i.e. $r_{xy} = r_{yx}$.
+
+:::
+
+---
+
+## Correlation
+
+::: {.columns}
+::: {.column width=50%}
+
+Interpretation:
+
+- $r = 1$: strong positive correlation
+- $r = -1$: strong negative correlation
+- $r = 0$: variables are not linearly associated, **though this doesn't imply they have no association!**
+
+
+:::
+::: {.column width=50%}
+
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+map_df(seq(1, -1, -0.2), function(r) {
+  mvtnorm::rmvnorm(300, sigma = matrix(c(1, r, r, 1), ncol = 2)) %>%
+    as.data.frame() %>%
+    mutate(r = r)
+}) %>%
+  ggplot() +
+  geom_point(aes(V1, V2), alpha = 0.3) +
+  facet_wrap(~r, labeller = label_both) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y")
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+map_df(seq(1, -1, -0.2), function(r) {
+  mvtnorm::rmvnorm(500, sigma = matrix(c(1, r, r, 1), ncol = 2)) %>%
+    as.data.frame() %>%
+    mutate(r = r)
+}) %>%
+  ggplot() +
+  geom_point(aes(V1, V2)) +
+  facet_wrap(~r) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y")
+```
+
+:::
+
+:::
+:::
+
+
+---
+
+## Correlation vs Causation
+
+**Causation** means that one variable **directly influences** another.
+
+Here are some examples:
+
+- Smoking increases the risk of lung cancer.
+- Drinking alcohol impairs motor skills and cognitive function.
+
+::: {.callout-warning}
+
+## **Remember**: Correlation does not imply causation!
+
+- Both ice cream sales and drowning incidents rise in hot weather, but ice cream sales do not cause drownings. The real factor is the temperature.
+- As shoe size increases, so does a child's reading ability. However, this relationship is actually due to age.
+- The number of pirates and global temperatures show a correlation, but this is a **spurious relationship — two unrelated variables that happen to coincide**!
+
+:::
+
+
+
+---
+
+## What is Modeling?
+
+**Modeling** is a method for understanding the **relationship between different variables**. 
+
+We typically represent the relationship of one **response variable**, $Y$, in relation to other **explanatory variables**, $X_1, X_2, \ldots, X_p$, using a **mathematical function**: 
+
+<br>
+
+$$Y = f(X_1, X_2, ..., X_p).$$
+
+<br>
+
+::: {.callout-note}
+
+# Why we need modeling?
+
+- While we can observe the data, we may not have insights into the **underlying processes**, i.e. the joint distributions of the variables. 
+
+- Therefore, we rely on data to **make inferences** about these processes and **build models to explain them**.
+
+
+:::
+
+
+---
+
+## Different Types of Models
+
+::: {.columns}
+
+::: {.column width=50%}
+
+
+There are lots of different models. 
+
+- Linear model
+- Non-linear model
+- Decision tree
+- Neural network
+- Non-parametric model
+- ...
+
+For now we focus on **linear models**.
+
+:::
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  ggplot() +
+  geom_point(aes(mint, maxt), alpha = 0.6) +
+  geom_smooth(aes(mint, maxt), method = "lm", se = FALSE) +
+  xlab(expression(Minimum~temperature~(degree*C))) +
+  ylab(expression(Maximum~temperature~(degree*C))) +
+  theme_light() +
+  ggtitle("Daily maximum and minimum temperature for bushfires \nin Victoria between 2015 and 2018")
+```
+
+
+## `r fontawesome::fa("code")` Code
+
+```r
+read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv") %>%
+  ggplot() +
+  geom_point(aes(mint, maxt)) +
+  geom_smooth(aes(mint, maxt), method = "lm", se = FALSE) +
+  xlab(expression(Minimum~temperature~(degree*C))) +
+  ylab(expression(Maximum~temperature~(degree*C))) +
+  theme_light() +
+  ggtitle("Daily maximum and minimum temperature for bushfires \nin Victoria between 2015 and 2018")
+```
+
+:::
+:::
+:::
+
+---
+
+## Simple Linear Regression
+
+A simple linear regression (SLR) is a regression model that involves a **single explanatory variable**. The formula is expressed as follows:
+
+$$y_i = \beta_0 + \beta_1 x_i + \varepsilon_i, \quad i = 1, \ldots, n.$$
+
+- $x_i$ and $y_i$: the $i$-th observation's $x$ and $y$ value
+- $\beta_0$ and $\beta_1$: **unknown constants** that represent the **intercept** and **slope**, also known as **coefficients** or **parameters**.
+- $\varepsilon$: the **error term**, which has specific properties and this is the **stochastic component** of the model, enabling us to make statistical inferences about the model and its parameters!
+
+---
+
+## Visulize Simple Linear Regression with `ggplot`
+
+What are the intercept and slope?
+
+::: {style="display: none"}
+
+```{webr-r}
+#| context: setup
+#| warning: false
+bushfire <- read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv")
+```
+
+:::
+
+```{webr-r}
+#| editor-max-height: 400
+#| warning: false
+bushfire %>%
+  ggplot() +
+  geom_point(aes(mint, maxt)) +
+  geom_smooth(aes(mint, maxt), method = "lm", se = FALSE)
+```
+
+---
+
+## Visulize Simple Linear Regression with `ggplot`
+
+What are the intercept and slope?
+
+```{webr-r}
+#| editor-max-height: 400
+#| warning: false
+cars %>%
+  ggplot() +
+  geom_point(aes(speed, dist)) +
+  geom_smooth(aes(speed, dist), method = "lm", se = FALSE)
+```
+
+---
+
+## Fitting Simple Linear Regression with `lm`
+
+$$\text{maxt}_i = \beta_0 + \beta_1\text{mint}_i + \varepsilon_i, \quad i = 1, \ldots, n.$$
+
+- $\hat{\beta}_0 = 12.02$ and $\hat{\beta}_1 = 1.04$ are the estimated values of the coefficients.
+
+```{webr-r}
+library(broom)
+mod <- lm(maxt ~ mint, data = bushfire)
+tidy(mod)
+```
+
+---
+
+## Fitting Simple Linear Regression with `lm`
+
+$$\text{speed}_i = \beta_0 + \beta_1\text{dist}_i + \varepsilon_i, \quad i = 1, \ldots, n.$$
+
+- $\hat{\beta}_0 = -17.58$ and $\hat{\beta}_1 = 3.93$ are the estimated values of the coefficients.
+
+```{webr-r}
+mod <- lm(dist ~ speed, data = cars)
+tidy(mod)
+```
+
+
+---
+
+## Estimation
+
+But how are these coefficients actually estimated?
+
+First, we need to introduce the concepts of **fitted values** and **residuals**.
+
+$$\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i.$$
+
+- The **hat symbol** ( $\hat{}$ ) indicates that these values are **estimated** or **fitted**.
+- $\hat{\beta}_0$ and $\hat{\beta}_1$ are the **estimated coefficients**.
+- $\hat{y}_i$ is the $i$-th **fitted value**.
+
+The $i$-th **residual** $e_i$ is the difference between the fitted value and the actual value of the response variable:
+
+$$ e_i = y_i - \hat{y}_i = y_i - (\hat{\beta}_0 + \hat{\beta}_1 x_i). $$
+
+
+---
+
+## Estimation
+
+```{r echo = FALSE}
+dat <- visage::poly_model(shape = 1, include_z = FALSE, sigma = 0.3)$gen(30)
+mod <- lm(y ~ x, data = dat)
+dat %>%
+  ggplot() +
+  geom_point(aes(x, y)) +
+  geom_line(aes(x, mod$fitted.values)) +
+  geom_point(aes(x, mod$fitted.values, col = "fitted values"), alpha = 0.6) +
+  geom_segment(aes(x = x, y = mod$fitted.values, xend = x, yend = y, col = "residuals"), linetype = 2, alpha = 0.6) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y")
+```
+
+---
+
+## Estimation
+
+We aim to **minimize the residuals**, meaning we want the regression line to be **as close to the data points as possible**.
+
+But how do we determine which solution is better? How do we evaluate it?
+
+```{r echo = FALSE}
+dat %>%
+  ggplot() +
+  geom_point(aes(x, y)) +
+  geom_line(aes(x, mod$fitted.values, col = "line 1")) +
+  geom_line(aes(x, 0.5 + 1.5 * x, col = "line 2")) +
+  geom_line(aes(x, 1.5 + -0.2 * x, col = "line 3")) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y")
+```
+
+---
+
+## Estimation
+
+We can minimize the **mean squared error** (MSE) by solving for the coefficients:
+
+$$ \underset{\beta_0, \beta_1}{\text{argmin}} \, \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $$
+
+This ensures that the regression line would be the line closest to the cloud of points!
+
+
+```{r echo = FALSE}
+dat %>%
+  ggplot() +
+  geom_point(aes(x, y)) +
+  geom_line(aes(x, mod$fitted.values, col = "line 1")) +
+  geom_line(aes(x, 0.5 + 1.5 * x, col = "line 2")) +
+  geom_line(aes(x, 1.5 -0.2 * x, col = "line 3")) +
+  geom_text(data = NULL, aes(x = -0.5, y = 0.8, label = glue::glue("MSE: {format(sum(mod$residuals^2)/length(mod$residuals), digits = 2)}"), col = "line 1")) +
+  geom_text(data = NULL, aes(x = -0.5, y = 0, label = glue::glue("MSE: {format(sum((0.5 + 1.5 * dat$x - dat$y)^2)/length(mod$residuals), digits = 2)}"), col = "line 2")) +
+  geom_text(data = NULL, aes(x = -0.5, y = 2, label = glue::glue("MSE: {format(sum((1.5 - 0.2 * dat$x - dat$y)^2)/length(mod$residuals), digits = 2)}"), col = "line 3")) +
+  theme_light() +
+  xlab("X") +
+  ylab("Y")
+```
+
+---
+
+## Estimation
+
+The minimization process described before leads to the following **estimates**:
+
+$$\hat{\beta}_1 = \frac{\sum_{i=1}^n(x_i-\bar{x})(y_i-\bar{y})}{\sum_{i=1}^n(x_i -\bar{x})^2} \Rightarrow \text{slope}, \text{ and}$$
+
+$$\hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x} \Rightarrow \text{intercept},$$
+where $\bar{y} = \frac{1}{n}\sum_{i=1}^ny_i$ and $\bar{x} = \frac{1}{n}\sum_{i=1}^nx_i$ are the sample mean.
+
+::: {.callout-note}
+
+
+Recall that $$r_{xy} = \frac{\sum_{i=1}^n (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2} \sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}}.$$
+
+So, for simple linear regression, $\hat{\beta}_1 = r_{xy}\frac{S_y}{S_x}$.
+
+
+:::
+
+---
+
+## Prediction
+
+Once the model is fitted and all parameters are estimated, we can make predictions by plugging in $x$ to obtain the predicted value $\hat{y}$.
+
+This predicted value **reflects the average $y$ for each corresponding value of $x$**, i.e. $\hat{E}[y|x]$.
+
+
+$$\widehat{\text{maxt}}_i = 12.02 + 1.04 \times \text{mint}_i.$$
+
+::: {.callout-note}
+
+## Examples:
+
+- For $\text{mint} = 10$, $\widehat{\text{maxt}} = 10 \times 1.04 + 12.02 = 22.42$. So, **on average**, we expect a day with a minimum temperature of 10 to have a maximum temperature of 22.42.
+
+**Warning:** While we "expect" this to happen, there will be some variability, which is captured by the error term.
+:::
+
+- Predictions are generally valid for new values **within the range of the original data used to fit the model**. Extrapolation beyond this range is **less reliable and carries greater risk**.
+
+
+---
+
+## Coefficient Interpretation
+
+Note that, when $\text{mint} = 0$, the predicted $\widehat{\text{maxt}} = 0 \times 1.04 + 12.02 = 12.02$.
+
+- This value is equal to the intercept, indicating that the intercept represents the **predicted average maximum temperature when the minimum temperature is zero**.
+
+Similarly, the slope $\hat{\beta}_1 = 1.04$ can be interpreted as follows:
+
+- **For each additional 1 degree increase in minimum temperature, the maximum temperature is expected to increase, on average, by 1.04 degrees.**
+
+---
+
+## Classical Normal Linear Regression Model
+
+We have discussed the most basic regression model in statistics. Now, let's consider its extension to include **multiple explanatory variables**:
+
+$$y_i = \beta_0 + \beta_1x_1 + \beta_2x_2 + ... +\beta_px_p + \varepsilon_i, \quad i=1,...n,$$
+
+where $\varepsilon_i \sim N(0, \sigma^2)$ for $i = 1,...n$.
+
+::: {.callout-important}
+
+
+## Model assumptions:
+
+1. **Linearity**: The relationship between explanatory variables and response variable is linear.
+2. **Independence**: The errors are assumed to be independent of each other.
+3. **Homoscedasticity**: The errors have constant variance across all levels of the explanatory variables.
+4. **Normality**: The errors are assumed to be normally distributed.
+
+
+:::
+
+---
+
+## Classical Normal Linear Regression Model
+
+```{webr-r}
+#| editor-max-height: 400
+#| editor-font-scale: 0.5
+#| fig-height: 4
+mod <- lm(maxt ~ mint + se, data = bushfire)
+p1_dat <- augment(mod, newdata = data.frame(mint = bushfire$mint, se = mean(bushfire$se)))
+p2_dat <- augment(mod, newdata = data.frame(se = bushfire$se, mint = mean(bushfire$mint)))
+p1 <- ggplot() +
+  geom_point(data = bushfire, aes(mint, maxt), alpha = 0.1) +
+  geom_line(data = p1_dat, aes(mint, .fitted))
+p2 <- ggplot(bushfire) +
+  geom_point(data = bushfire, aes(se, maxt), alpha = 0.1) +
+  geom_line(data = p2_dat, aes(se, .fitted))
+patchwork::wrap_plots(p1, p2)
+```
+
+---
+
+## Coefficient Interpretation
+
+In a CNLRM, the interpretation of the intercept term $\hat{\beta}_0$ remains the same. 
+
+- It represents the predicted average value of $y$ when all $x$ values are equal to zero.
+
+For the other parameters $\hat{\beta}_j$ where $j = 1, \ldots, p$, the interpretation is as follows:
+
+- While **holding all other variables constant**, for each additional unit increase in $x_j$, the variable $y$ is expected to increase, on average, by $\hat{\beta}_j$ units.
+
+
+---
+
+## Let's have a break! {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+## Model Diagnostics {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+
+## Model Diagnostics
+
+> All models are wrong; some are useful - George Box.
+
+After fitting a linear model, it is crucial to assess whether the **model assumptions are satisfied**. 
+
+There is a real risk, that a model is **imposing structure that is not really there.**
+
+It can result in inaccurate estimates of the coefficients and misleading interpretations of the relationship between $x$ and $y$.
+
+---
+
+## Residual plots
+
+::: {.columns}
+::: {.column width=50%}
+
+The first thing to check is the residuals versus fitted values plot. 
+
+What constitutes a good residual plot?
+
+- Residuals should be **randomly scattered around the horizontal line at zero**.
+- There should be **no discernible patterns** in the residuals, such as curves or trends.
+- The spread of the residuals should **remain consistent across all levels of the fitted values**.
+
+:::
+::: {.column width=50%}
+
+
+```{webr-r}
+#| editor-max-height: 400
+mod <- lm(maxt ~ mint + se, data = bushfire)
+augment(mod) %>%
+  ggplot() +
+  geom_point(aes(.fitted, .resid), alpha = 0.1)
+```
+
+
+:::
+:::
+
+---
+
+## Residual versus Explanatory Variable
+
+::: {.columns}
+::: {.column width=50%}
+
+The second thing to check is the **residuals versus each individual explanatory variable** plot.
+
+The principles for a good residual plot remain the same. 
+
+This type of plot offers clearer insights into the relationship between the residuals and each individual explanatory variable, which can be invaluable for refining and improving the model.
+
+:::
+::: {.column width=50%}
+
+
+```{webr-r}
+#| editor-max-height: 400
+#| fig-height: 4
+mod <- lm(maxt ~ mint + se, data = bushfire)
+p1 <- augment(mod) %>%
+  ggplot() +
+  geom_point(aes(mint, .resid), alpha = 0.1)
+p2 <- augment(mod) %>%
+  ggplot() +
+  geom_point(aes(se, .resid), alpha = 0.1)
+patchwork::wrap_plots(p1, p2)
+```
+
+
+:::
+:::
+
+---
+
+## Q-Q plot
+
+::: {.columns}
+::: {.column width=50%}
+
+The third thing to check is the **Q-Q plot**.
+
+To check a Q-Q plot, compare the distribution of your residuals to a **theoretical normal distribution**. 
+
+In a good Q-Q plot, the points should **closely follow the 45-degree reference line**. 
+
+Significant **deviations** from this line, such as curves or outliers, indicate that the residuals may not be normally distributed, which could suggest **violations of model assumptions**.
+
+
+:::
+::: {.column width=50%}
+
+
+```{webr-r}
+#| editor-max-height: 400
+#| fig-height: 4
+mod <- lm(maxt ~ mint + se, data = bushfire)
+augment(mod) %>%
+  ggplot() +
+  geom_qq(aes(sample = .resid)) +
+  geom_qq_line(aes(sample = .resid))
+```
+
+
+:::
+:::
+
+---
+
+## Lineup of Residual Plots
+
+```{r echo = FALSE}
+bushfire <- read_csv("https://raw.githubusercontent.com/numbats/ida2024s2/master/data/vic_bushfire.csv")
+```
+
+::: {.columns}
+::: {.column width=50%}
+
+We can display the actual residual plot alongside a matrix of **residual plots simulated under the assumption that the model is correct**.
+
+If the true residual plot is **distinct and identifiable within the matrix**, it provides evidence suggesting a violation of the model assumptions.
+
+This method is known as the **lineup protocol**.
+
+
+- Learn more about it from [here](https://www.tandfonline.com/doi/full/10.1080/10618600.2024.2344612?af=R#abstract).
+
+
+:::
+::: {.column width=50%}
+
+
+::: {.panel-tabset}
+
+## `r fontawesome::fa("chart-bar")` Plot
+
+```{r echo = FALSE}
+# remotes::install_github("autovi")
+mod <- lm(maxt ~ mint + se, data = bushfire)
+autovi::auto_vi(mod)$plot_lineup(alpha = 0.1)
+```
+
+## `r fontawesome::fa("code")` Code
+
+```r
+# remotes::install_github("autovi")
+mod <- lm(maxt ~ mint + se, data = bushfire)
+autovi::auto_vi(mod)$plot_lineup(alpha = 0.1)
+```
+
+:::
+
+
+:::
+:::
+
+---
+
+## Model Selection
+
+Beyond checking model assumptions, we often need to select between different models. For instance, choosing between `maxt ~ rf + mint` or `maxt ~ mint`.
+
+There are several statistics to assess model fit: 
+
+- $R^2$
+- adjusted $R^2$ 
+- AIC 
+- BIC 
+- Deviance
+- ...
+
+---
+
+## $R^2$
+
+$$R^2 = 1-\frac{\sum_{i=1}^{n}(y_i-\hat{y})^2}{\sum_{i=1}^{n}(y_i-\bar{y})^2} = \frac{\text{Residual sum of square}}{\text{Total sum of square}} \in [0,1].$$
+
+- The coefficient of determination, $R^2$, ranges from 0 to 1, with 1 indicating a perfect fit.
+- Adding more variables increases $R^2$ but also adds model complexity.
+- **Adjusted $R^2$ penalizes for excessive variables to account for model complexity.**
+- $R^2$ is a common measure of linear model fit, indicating the **percentage of variability in $y$ explained by the model**, with the remainder attributed to factors not included.
+
+---
+
+## $R^2$
+
+Which model is better?
+
+```{webr-r}
+lm(maxt ~ mint, bushfire) %>% glance()
+lm(maxt ~ mint + rf, bushfire) %>% glance()
+```
+
+
+
+---
+
+## AIC, BIC, and Deviance
+
+AIC, BIC, and Deviance are **goodness of fit measure** to compare models.
+
+- AIC = Akaike Information Criterion (can be used to compare models.
+The smaller the value the better the model.)
+
+- Similarly BIC = Bayes Information Criterion indicates how well the
+model fits, best used to compare two models. Lower is better.
+
+- Deviance is the residual variation, how much variation in response
+that IS NOT explained by the model. The close to 0 the better, but it is
+not on a standard scale. In comparing two models if one has
+substantially lower deviance, then it is a better model.
+
+---
+
+## Going beyond A Single Model {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Gapminder
+
+- Hans Rosling was a Swedish doctor, academic and statistician,
+Professor of International Health at Karolinska Institute. Sadly he
+passed away in 2017.
+
+- He developed a keen interest in health and wealth across the globe,
+and the relationship with other factors like agriculture, education,
+energy.
+
+- You can play with the gapminder data using animations at
+[https://www.gapminder.org/tools/](https://www.gapminder.org/tools/).
+
+---
+
+## Watch the Video
+
+{{< video https://www.youtube.com/embed/Z8t4k0Q8e8Y width="1200" height="800" >}}
+
+---
+
+## R package: `gapminder`
+
+Contains subset of the data on five year intervals from 1952 to 2007.
+
+```{webr-r}
+library(gapminder)
+glimpse(gapminder)
+```
+
+---
+
+## Change in Life Expectancy in Countries over Time
+
+```{webr-r}
+gapminder %>%
+  ggplot() +
+  geom_line(aes(year, lifeExp, group = country), alpha = 0.3)
+```
+
+---
+
+## Change in Life Expectancy in Countries over Time
+
+- There generally appears to be an increase in life expectancy
+- A number of countries have big dips from the 70s through 90s
+- A cluster of countries starts off with low life expectancy but ends up close to the highest by the end of the period.
+
+---
+
+## Fit Linear Models for Multiple Countries with `nest`
+
+```{webr-r}
+#| editor-max-height: 400
+#| editor-font-scale: 0.5
+gapminder %>%
+  mutate(year1950 = year - 1950) %>%
+  group_by(country) %>%
+  nest() %>%
+  mutate(model = map(data, ~lm(lifeExp ~ year1950, data = .x))) %>%
+  mutate(.augment = map(model, ~augment(.x))) %>%
+  unnest(.augment) %>%
+  ggplot() +
+  geom_line(aes(year1950, .fitted, group = country), alpha = 0.3)
+```
+
+---
+
+## Differences in Life Expectancy by Continent
+
+```{webr-r}
+#| editor-max-height: 400
+gapminder %>%
+  ggplot() +
+  geom_line(aes(year, lifeExp, group = country, col = continent), alpha = 0.3) +
+  scale_color_brewer(palette = "Dark2")
+```
+
+
+---
+
+## Fit An Overall Model
+
+- Categorical explanatory variables are typically encoded to **dummy variables**, one for each of the levels.
+- Each coefficient describes the expected difference **compared to the baseline level**.
+
+```{webr-r}
+#| editor-max-height: 400
+#| editor-font-scale: 0.5
+gapminder %>%
+  mutate(year1950 = year - 1950) %>%
+  group_by(country) %>%
+  {lm(lifeExp ~ year1950 + continent + pop + gdpPercap, data = .)} %>%
+  summary()
+```
