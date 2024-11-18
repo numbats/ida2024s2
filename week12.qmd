@@ -1,0 +1,388 @@
+---
+title: "ETC1010/ETC5510: Introduction to Data Analysis"
+title-slide-attributes: 
+  data-background-image: "_extensions/monash/images/bg-03.png"
+subtitle: "Week 12: Course Recap"
+author: 
+ - name: "Patrick Li"
+   email: "patrick.li@monash.edu"
+institute: "Department of Econometrics and Business Statistics"
+footer: "ETC1010/ETC5510 Lecture 12 | Melbourne time <span id = 'mel-local-time'></span>"
+format: 
+  monash-revealjs:
+    multiplex: false
+    slide-number: c/t
+    slide-tone: false
+    width: 1600
+    height: 900
+    margin: 0.05
+    transition: fade
+    transition-speed: fast
+    embed-resources: true
+webr:
+  show-startup-message: false
+  packages: ['tidyverse', 'broom', 'patchwork', 'gapminder']
+  autoload-packages: true
+  cell-options:
+    editor-font-scale: 0.6
+    editor-max-height: 120
+    autorun: true
+filters: 
+  - webr
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include = FALSE}
+current_file <- knitr::current_input()
+basename <- gsub(".[Rq]md$", "", current_file)
+
+knitr::opts_chunk$set(
+  fig.path = sprintf("images/%s/", basename),
+  fig.width = 6,
+  fig.height = 4,
+  fig.align = "center",
+  out.width = "100%",
+  fig.retina = 3,
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  cache = TRUE,
+  cache.path = "cache/"
+)
+
+library(tidyverse)
+library(broom)
+```
+
+---
+
+## Final Assessment {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Final Assessment Overview
+
+- Date & Time: 08/11/2024 10:00 am - 12:10 am
+
+- **You should all have received information about Exam times. If not, contact the exam team immediately!** 
+
+- Exam administration is done centrally. Unfortunately we can not help you with any issues regrading scheduling, etc.
+
+::: {.callout-note}
+
+## ETC1010 (Check your Exam timetable for the most up-to-date details!)
+
+- Location 1: Monash College, 49 Rainforest Walk, Clayton
+- Location 2: Room 101, LTB, Clayton
+:::
+
+::: {.callout-note}
+
+## ETC5510 (Check your Exam timetable for the most up-to-date details!)
+
+- Location 1: Room 121, LTB, Clayton
+- Location 2: Room 101, LTB, Clayton
+
+:::
+
+---
+
+## Final Assessment Format
+
+The final assessment will be an [e-assessment](https://www.monash.edu/students/admin/assessments/exams) on campus. 
+
+::: {.callout-warning}
+
+## Rules
+
+- All answers should be written as sentences. Please do not use bullet points (even though some of the practice exam solutions have bullet points)
+- **No calculators! They are not needed.**
+- No cheat sheet (We will confirm this later this week).
+- You don't need to write any code.
+- You get up to 5 blank pieces of working paper
+
+:::
+
+::: {.callout-important}
+
+## Topics
+
+- All topics from week 1 to week 11 are covered.
+- Except for those we identified as non-examinable during the lectures, such as regular expressions.
+- Focus on the methodology and the interpretation rather than the implementation in R.
+
+:::
+
+---
+
+## Final Assessment Format
+
+::: {.callout-note}
+
+## Format
+
+
+- There are 60 marks for undergrad students - so 2 min per mark on average
+- Post-grad students (ETC5510) have an extra 5 mark question
+  + *Why?* It is a requirement of the University's accreditation for assessments > 20%
+- The format is the same as the practice exam
+- Questions will appear like a quiz
+- There are some T/F MCQ questions
+- Most are short answer
+
+:::
+
+---
+
+## Final Assessment Format
+
+::: {.callout-note}
+
+## Expectation for answers
+
+- Generally 1-3 mark questions just need a short sentence or two in answer to a specific question
+- Some questions worth > 3 marks may involve a list, so short sentences ar OK here too
+- Questions that ask you to discuss or justify your answer
+  + These require a bit more thought
+  + They also are open, so any sensible discussion is OK
+  + You need to be able to explain your reasoning
+- Hopefully you realise that the formatting and expectations are similar to A2
+- Remember this when you do the practice exam
+
+:::
+
+---
+
+## Final Assessment Advice
+
++ Read the questions carefully in reading time
++ Identify the questions that you think you know and do those first
++ This should leave time to think about the other questions
++ If you get stuck - move on and return.
++ Worst case - just write something and you may be lucky
++ Blank answers get 0, but an attempt may not!
+
+---
+
+## Exam Consultations
+
+- Use this, especially to check you practice exam answers
+- Check the timetable on Moodle (will release soon)
+
+---
+
+## SETU {.transition-slide .center style="text-align: center;"}
+
+---
+
+## Student Survey
+
+
+Please take 5-10 minutes to complete the [Student Evaluation of Teaching and Units (SETU)](https://learning.monash.edu/mod/forum/discuss.php?d=245306#:~:text=https%3A//www.monash.edu/insights/setu). 
+
+- Your feedback is invaluable in helping us improve our teaching methods and course design. 
+
+- Both the teaching team and the faculty place great importance on student input, so your participation is greatly appreciated.
+
+---
+
+## EBS Honours {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+## EBS Honours Degree
+
+- The Department of Econometrics and Business Statistics offers a **one-year Honours program** for outstanding students (WAM > 70%).
+
+- Three streams offered: **Business Analytics**, **Actuarial Studies** and **Econometrics and Business Statistics**
+
+- Benefits of the Honours program:
+  - Many **top employers** (e.g. Reserve Bank of Australia) recruit Honours graduates.
+  - Highly recommended for students planning to pursue a **PhD or MPhil**.
+  - Upon completion, you can receive **1-year credit** toward a Master of Commerce (MCom).
+  
+- It’s an excellent first step toward **academic research**.
+
+- **Econometrics Honours Memorial Scholarship** available (AUD 15,000).
+
+- Join an **excellent cohort** of smart and creative students.
+
+- Opportunity to work with **inspiring faculty members**.
+
+---
+
+## EBS Honours Degree
+
+- **Program components**:
+  - **6 units** of study (depending on your stream, negotiable)
+  - **1 research project**
+  
+::: {.callout-note}
+
+## Research milestons (2020 version)
+
+1. **Week 4, Semester 1**: Confirm research topic and supervisors.
+2. **Week 9, Semester 1**: Submit research plan, including a literature review.
+3. **Week 10, Semester 1**: Deliver the first presentation (15 minutes).
+4. **Week 1, Semester 2**: Submit preliminary draft of work in progress.
+5. **Week 9, Semester 2**: Submit draft of the research paper.
+6. **Week 10, Semester 2**: Deliver the second presentation (30 minutes).
+7. **Week 12, Semester 2**: Submit the final research paper.
+
+
+:::
+
+---
+
+## Course Recap {.transition-slide .center style="text-align: center;"}
+
+---
+
+## EDA (Exploratory Data Analysis)
+
+- We explored the **EDA process** in detail.
+- The entire unit focuses on EDA.
+- It's important to understand the **goals and aims** of EDA.
+- Be aware of what EDA can and cannot accomplish.
+- Use your lecture notes as a guide to help you **explain the EDA process in your own words**!
+---
+
+## EDA: Tidy Data
+
+- **What is tidy data?**
+- **Why is tidy data important?**
+- What **functions** can you use to transform your data into a tidy format?
+
+---
+
+## EDA: Reproducible Analysis
+
+- You have been using **Quarto/RMarkdown** for some time.
+- **Why is reproducible analysis important?**
+- What should we be cautious about when using Quarto/RMarkdown for reproducible practices?
+
+---
+
+## EDA: Visualization
+
+- Consider the various types of visualizations and their corresponding functions.
+- What are the best practices and common pitfalls in visualization? How do we evaluate the quality of a visualization?
+- **What questions can specific graphs help answer?**
+- Focus on the **interpretation** of the information presented by the statistical graphics.
+---
+
+## Relational Data
+
+- **What is relational data?**
+- **What are the different types of keys?**
+- **What are the different types of joins, and how do they differ from one another?**
+
+
+---
+
+## Web Scraping
+
+- This topic is **non-examinable**.
+- How do we locate the desired node on a webpage?
+- How can we extract text using regular expressions?
+- What methods can we use to automatically scrape multiple pages?
+
+---
+
+## Text Analysis
+
+- **Regular expressions and metacharacters** (**non-examinable**)
+- What is the **tidy text format**?
+- What is a **text token**?
+- What units of text are typically used as tokens?
+- What are **stop words**?
+- What is **sentiment analysis**?
+- How do we evaluate word importance? What statistics can we use, and what do they measure?
+
+---
+
+## Cluster Analysis
+
+- What is **cluster analysis**, and how does it relate to EDA?
+- What are the limitations of **cluster analysis**?
+- What is **hierarchical clustering**, and what are the two types of hierarchical clustering? How do they differ?
+- What are the common **distance measures** used in clustering?
+- What are the common **linkage methods** for hierarchical clustering?
+
+---
+
+## Cluster Analysis
+  
+- Describe in your own words how **k-means** and **hierarchical clustering** work. What are the steps involved in conducting each method?
+- How do we determine the number of clusters for k-means and hierarchical clustering? How do we interpret a dendrogram?
+- Understand the **advantages** and **disadvantages** of k-means and hierarchical clustering:
+  - K-means is generally faster.
+  - The agglomerative approach is generally faster than the divisive approach.
+  - K-means involves randomness, while hierarchical clustering does not.
+  - ...
+- How to visualize clustering result in high-dimensional data space? What should be checked?
+
+  
+---
+
+## Modeling
+
+
+- **Correlation vs. Causation**
+- What is a **linear model**?
+- Why do we include an **error term** in the formula?
+- What are the **model assumptions**, and what are the assumptions regarding the error term?
+- **How do we interpret the estimated coefficients and predicted/fitted values?** (This is extremely important for the correct interpretation of the model.)
+- Why do we use the term "average" frequently in our interpretations?
+
+
+---
+
+## Modeling
+
+- What plots should be created to check **model assumptions**?
+- What constitutes a good **residual plot**, and what should we check for?
+  - Patterns
+  - Variance
+  - Normality
+  - ...
+- What statistics can be used and should be consistently checked to assess the quality of the fit?
+- How do we handle **categorical variables**, and how do we interpret coefficients for those variables?
+- How do we perform **model selection**?
+
+---
+
+## R Code
+
+- While R code isn't required for the exam, it's important to know how to use it.
+- **You do need to know which package we heavily rely on for each topic for the exam! (e.g. `tidytext` for text analysis and `broom` for linear modeling)**
+- Master `dplyr` and `ggplot2`, these two will be your most used packages in data analysis.
+- You may encounter a small code example where you'll need to explain its functionality (similar to the practice exam).
+- Remember to **practice, practice, and practice**!
+
+---
+
+## Finally
+
+- Double check your grades and let us know of any issues **BEFORE** the end of Swot Vac.
+- Check A2 immediately and let us know of any issues **BEFORE** the exam if possible.
+- If not, straight after the exam - marks will be finalised a week after the exam
+
+- The weekly quiz grades are 0 or 1, best 10/11. So the actual grade doesn't count - you just had to attempt it!
+
+- Well done on making it through the semester
+- Good luck on the exam!
+
+---
+
+## Thank You! {.transition-slide .center style="text-align: center;"}
+
+
+---
+
+## Any Questions? {.transition-slide .center style="text-align: center;"}
+
+
+

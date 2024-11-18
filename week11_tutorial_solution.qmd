@@ -1,0 +1,648 @@
+---
+title: "ETC1010/5510 Tutorial 11 - Solution"
+subtitle: "Introduction to Data Analysis"
+author: "Patrick Li"
+date: "Oct 7, 2024"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  message = FALSE, 
+  warning = FALSE,
+  error = FALSE, 
+  out.width = "70%",
+  fig.width = 8, 
+  fig.height = 6,
+  fig.retina = 3)
+set.seed(6)
+filter <- dplyr::filter
+```
+
+
+## `r emo::ji("target")` Workshop Objectives
+
+- Introduction to linear models
+- Interpreting linear models
+- Linear model diagnostic
+
+
+## `r emo::ji("wrench")` Instructions
+Install the necessary pacakges
+
+##  🌶️ Exercise: Introduction to Linear Model
+
+```{r}
+library(tidyverse)
+library(broom)
+```
+
+
+### Section A: Practice with Advertising Data
+
+#### 1. Read the data into RStudio. Remove the first column.
+
+```{r pp}
+advert <- read_csv("data/Advertising.csv") %>% 
+  select(-1)
+
+head(advert)
+```
+
+Before fitting a model, let's do some EDA. Plot the data with `sales` on the y-axis, and the rest of the variables on the x-axis in 3 separate plots. Then combine them into one plot.
+
+```{r gg-height-width}
+p1 <- ggplot(advert,
+       aes(x = radio,
+           y = sales)) +
+  geom_point(alpha = 0.2)
+
+p2 <- ggplot(advert,
+       aes(x = newspaper,
+           y = sales)) +
+  geom_point(alpha = 0.2)
+
+p3 <- ggplot(advert,
+       aes(x = TV,
+           y = sales)) +
+  geom_point(alpha = 0.2)
+
+gridExtra::grid.arrange(p1, p2, p3, nrow = 1)
+```
+
+
+
+#### 2. Fit a model with just `radio` as the x variable.
+
+The simple linear regression is of the form:
+
+$$y_i=\beta_0+\beta_1x_{i}+\varepsilon_i, ~~~ i=1, \dots, n$$
+
+Suppose we are interested in the amount of variation in `sales` that is explained by the variation in `radio`.
+
+```{r lm-fit}
+advert_m1 <- lm(sales ~ radio, data = advert)
+advert_m1
+```
+
+The formula `response ~ explanatory` specifies the response variable and explanatory variable from the data. In this case, the response is sales in in thousands of units and the explanatory variable is spending on radio advertisement, in thousands of dollars. 
+
+Note that by default, the `lm()` function will include the intercept term.
+
+We can extract components of the regression line using the `broom` package. The function `tidy()` will extract the estimated coefficients as a tidy table.
+
+```{r coef-tidy}
+library(broom)
+coef_advert_radio <- tidy(advert_m1)
+coef_advert_radio
+```
+
+The fitted model has the following functional form:
+
+$$\widehat{\text{sales}} = 9.311 + 0.202~\text{radio}$$
+
+The coefficients can be interpreted as 
+
+**Slope:** For each additional thousand dollars spending on radio advertising, on average, the sales increases by 202 units.
+
+**Intercept:** When there is no advertising spending on radio, sales increases by 9 thousand units.
+
+We can draw our fitted linear model with `geom_smooth(method = "lm")`
+
+```{r measure-smooth}
+ggplot(advert,
+       aes(x = radio,
+           y = sales)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm")
+```
+
+#### 3. Diagnostics and augment
+
+The residuals from the model are the differences between the observed values and the fitted values. 
+The residuals and fitted values can be extracted from using `augment()` function as part of the `broom` package:
+
+```{r residuals}
+advert_m1_diagnostics <- augment(advert_m1)
+advert_m1_diagnostics
+```
+
+We can visualise the residuals directly on the scatter plot:
+
+```{r vis-res}
+ggplot(advert,
+       aes(x = radio,
+           y = sales)) +
+  geom_point(alpha = 0.2)+
+  geom_smooth(method = "lm", se = FALSE) +
+  # overlay fitted values
+  geom_point(data = advert_m1_diagnostics, 
+             aes(y = .fitted), 
+             color = "blue", 
+             alpha = 0.2) +
+  # draw a line segment from the fitted value to observed value
+  geom_segment(data = advert_m1_diagnostics, 
+               aes(xend = radio, y = .fitted, yend = sales),
+               color = "blue",
+               alpha = 0.2)
+```
+
+Another way of visualising residuals is to produce a scatterplot of the residuals against the fitted values:
+
+```{r fitted-residuals}
+ggplot(advert_m1_diagnostics,
+       aes(x = .fitted, y = .resid)) +
+  geom_point()
+```
+
+Yet, another and a better way to visualise residuals is using `resid_panel()` which gives you a panel of diagnostic residual plots.
+
+```{r}
+library(ggResidpanel)
+resid_panel(advert_m1, plots = "all")
+```
+
+Recall the assumptions of the linear model from the lecture. What are they?
+
+- Are they met from the plots?
+- Are there observations with large positive residuals? What do they mean?
+
+#### 4. How good is your fit? 
+
+- $R^2$ is a common measurement of strength of linear model fit.
+- $R^2$ tells us % variability in response explained by the model.
+
+We can extract model fit summaries using `glance()`
+
+```{r r2}
+advert_m1_summary <- glance(advert_m1)
+advert_m1_summary
+```
+
+The $R^2$ value here can be interpreted as the proportion of variability in sales explained by spending on radio advertisement. That is approximately 33% of variability in sales is explained by spending on radio advertisement. Hmm, that is not much! 😒
+
+### Section B: Multiple Linear Regression
+
+In reality, we will not only spend all the advertising spending on just one medium. We may choose to have other media of advertisement too such as newspaper and TV.
+
+#### 1.  Run a multiple regression model to show the effect of different advertising media on sales. Obtain a summary of the regression results.
+
+```{r}
+advert_m2 <- lm(sales~ TV + newspaper + radio,
+                data = advert)
+summary(advert_m2)
+```
+
+
+#### 2. Is the relationship linear?
+
+```{r}
+advert_m2_aug <- augment(advert_m2)
+ggplot(data = advert_m2_aug,
+       aes(x = .fitted,
+           y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, colour = "red")
+```
+
+#### 3.Residual Plots
+Residual plots can be used in order to identify non-linearity or other problems with our regression model. 
+  * Plot the residuals using `resid_panel()`.
+**Take this out of the exercise, but leave in the solutions**
+```{r}
+library(ggResidpanel)
+resid_panel(advert_m2, plots = "all")
+```
+  * Do you see any patterns? **[ANS: Looks fine but the residuals tends to be more positive when the fitted values are at the lower or higher values.]**
+
+- We can see that the residuals are not normal, in which the Q-Q plot, histogram and boxplot show data skewness.
+- The Cook's Distance plot shows our data is having two extreme outliers. You may want to investigate on this.
+
+
+## 👴 Exercise 9B: Data modelling using the gapminder data
+
+### Gapminder
+
+- Hans Rosling was a Swedish doctor, academic and statistician, Professor of International Health at Karolinska Institute. Sadly he passed away in 2017. 
+- He developed a keen interest in health and wealth across the globe, and the relationship with other factors like agriculture, education, and energy. 
+- You can play with the gapminder data using animations at https://www.gapminder.org/tools/. 
+
+<!-- <iframe width="1008" height="567" src="https://www.youtube.com/embed/jbkSRLYSojo" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> -->
+
+R package `gapminder` contains subset of the data on five year intervals from 1952 to 2007.
+
+```{r show-gapminder}
+library(gapminder)
+glimpse(gapminder)
+```
+
+### Section A: Australia
+
+### 1. How has life expectancy changed over the years, for each country?
+Use a line plot to answer this question and provide your explanation here. 
+```{r gg-gapminder-line, fig.height = 4, echo = FALSE}
+gapminder %>% 
+  ggplot(aes(year, lifeExp,
+             group = country,
+             color = continent)) +
+    geom_line(alpha = 1/3)
+
+```
+
+- There generally appears to be an increase in life expectancy in the different countries.
+- A number of countries have big dips from the 1970s through 1990s.
+- A cluster of countries starts off with low life expectancy but ends up closer to the highest life expectancy by the end of the period.
+
+
+#### 2. How has life expectancy in Australia changed over the years. 
+Use a line plot to answer this question and provide your explanation here. 
+
+```{r gapminder-oz}
+oz <- gapminder %>% 
+  filter(country == "Australia")
+oz
+```
+
+#### 3. Fit the linear model just for Australia: `lifeExp ~ year`
+
+```{r plot-gapminder-oz, fig.height=3, fig.width=8}
+ggplot(data = oz, 
+       aes(x = year, 
+           y = lifeExp)) + 
+  geom_line() 
+```
+
+#### 4. Fit a linear model: `lifeExp ~ year`.
+
+```{r lm-oz-gapminder}
+oz_lm <- lm(lifeExp ~ year, data = oz)
+
+oz_lm
+
+summary(oz_lm)
+```
+
+#### 5. Tidy the model.
+
+```{r tidy-oz-gapminder}
+tidy(oz_lm)
+```
+
+$$\widehat{lifeExp} = -376.1163 + 0.2277~year$$
+
+#### 6. Center year
+
+Let us treat 1950 as the first year, so for model fitting, we are going to shift the years to begin in 1950. This makes interpretation easier.
+
+```{r center-eyar}
+gap <- gapminder %>% 
+  mutate(year1950 = year - 1950)
+
+oz <- gap %>% 
+  filter(country == "Australia")
+```
+
+#### 7. Model for centered year
+
+```{r oz-gapminder-centered-year}
+oz_lm <- lm(lifeExp ~ year1950, data = oz)
+
+oz_lm
+```
+
+#### 8. Tidy the model centered year
+
+```{r tidy-oz-gapminder-centered-year}
+tidy(oz_lm)
+```
+
+$$\widehat{lifeExp} = 67.9 + 0.2277~year1950 $$
+
+
+#### 9. Extract residuals and fitted values using `augment()`
+
+```{r oz-gapminder-augment, fig.height=3, fig.width=8}
+oz_aug <- augment(oz_lm, oz)
+oz_aug
+
+oz_aug$.fitted
+oz_aug$.resid
+```
+
+#### 10. Plot the `year` and `lifeExp` with points and add in the line.
+
+```{r oz-gap-aug, fig.height=3, fig.width=8}
+ggplot(data = oz_aug, 
+       aes(x = year, 
+           y = .fitted)) + 
+  geom_line(colour = "blue") + 
+  geom_point(aes(x = year,
+                 y = lifeExp))
+```
+
+#### 11. Plot residuals against fitted values to reveal problems with the fit and interpret it.
+
+```{r oz-gap-year-resid, fig.height=3, fig.width=8}
+ggplot(oz_aug,
+       aes(x = .fitted, y = .resid)) +
+  ylim(c(-5,5)) +
+  geom_point()
+
+# Another way to look at Residuals: .std.resid with year:
+ggplot(data = oz_aug, 
+             aes(x = year, 
+                 y = .std.resid)) +
+  ylim(c(-5,5)) + 
+  geom_hline(yintercept = 0,
+             colour = "white", 
+             size = 2)  +
+  geom_line() 
+```
+
+- Life expectancy has increased 2.3 years every decade, on average.   
+- There was a slow period from 1960 through to 1972, probably related to mortality during the Vietnam war.
+
+Note: We use standardized residuals here is to make the residuals unitless. Therefore, it is easier for us to spot any unusual observations, which are those above the line of 2 and below -2. Remember the rules of 95% confidence interval?
+
+### Section B: Other countries?? 
+
+#### 1. Can we fit a model for New Zealand?
+
+```{r lm-nz}
+nz <- gap %>% 
+  filter(country == "New Zealand")
+
+nz_lm <- lm(lifeExp ~ year1950, data = nz)
+nz_lm
+```
+
+#### 2. Can we fit a model for Japan?
+
+```{r lm-japan}
+japan <- gap %>%
+  filter(country == "Japan")
+
+japan_lm <- lm(lifeExp ~ year1950, data = japan)
+japan_lm
+```
+
+#### 3. Can we fit a model for Italy?
+
+```{r lm-italy}
+italy <- gap %>%
+  filter(country == "Italy")
+
+italy_lm <- lm(lifeExp ~ year1950, data = italy)
+italy_lm
+```
+
+#### 4. Is there a better way? What if we wanted to fit a model for ALL countries?
+
+YES, let's begin. 🙂
+
+
+1. Nest country level data (one row = one country)
+
+```{r nest}
+by_country <- gap %>% 
+  select(country, year1950, lifeExp, continent) %>%
+  group_by(country, continent) %>% 
+  nest()
+
+by_country
+```
+
+2. What is in the `data` column?
+
+```{r show-nest}
+by_country$data[[1]]
+```
+
+It's a tibble! 🤪
+
+Let's fit a linear model to each one of them.
+
+```{r fit-many-model}
+lm_afganistan <- lm(lifeExp ~ year1950, 
+                    data = by_country$data[[1]])
+lm_albania <- lm(lifeExp ~ year1950, 
+                 data = by_country$data[[2]])
+lm_algeria <- lm(lifeExp ~ year1950, 
+                 data = by_country$data[[3]])
+```
+
+🙈 But, we are copying and pasting this code more than twice... Is there a better way?
+
+A case for `map`???
+
+`map(<data object>, <function>)`
+
+#### 1. Write a function to fit lm to all countries and map the function to data column of `by_country`
+
+```{r mapped-lm}
+fit_lm <- function(x){
+  lm(lifeExp ~ year1950, data = x) 
+}
+
+mapped_lm <- map(by_country$data, fit_lm)
+
+head(mapped_lm)
+```
+
+#### 2. Map inside the data?
+
+```{r map-country}
+country_model <- by_country %>% 
+                    mutate(model = map(data, function(x){
+                      lm(lifeExp ~ year1950, data = x)
+                      })
+                      )
+
+country_model
+```
+
+#### 3. Case for map (shorthand function)
+
+```{r map-country-short}
+country_model <- by_country %>% 
+  mutate(model = map(data, ~lm(lifeExp ~ year1950,
+                               data = .)))
+
+country_model
+```
+
+#### 4. What's the model?
+
+```{r print-model}
+country_model$model[[1]]
+```
+
+#### 5. How do we summarise the content in the model?
+
+```{r tidy-printed-model}
+tidy(country_model$model[[1]])
+```
+
+#### 6. So should we repeat it for each one?
+
+```{r tidy-many-printed-model}
+tidy(country_model$model[[1]])
+tidy(country_model$model[[2]])
+tidy(country_model$model[[3]])
+```
+
+NO!! There's a better way. 😙
+
+```{r}
+country_model %>%
+  mutate(tidy = map(model, tidy))
+```
+
+
+Data Wrangle and tidy:
+
+```{r map-tidy-model}
+country_coefs <- country_model %>%
+                    mutate(tidy = map(model, tidy)) %>%
+                    unnest(tidy) %>%
+                    select(country, continent, term, estimate)
+
+country_coefs
+```
+
+```{r tidy-unnested-coefs}
+tidy_country_coefs <- country_coefs %>%
+                          pivot_wider(id_cols = c(country, continent), 
+                                      names_from =  term,
+                                      values_from = estimate) %>%
+                          rename(intercept = `(Intercept)`)
+
+tidy_country_coefs
+```
+
+#### 7. Check for Australia
+
+```{r oz-unnested-coef, echo=TRUE}
+tidy_country_coefs %>%
+  filter(country == "Australia")
+```
+
+### Section C: Extension Exercise
+
+- Fit the models to all countries.
+- Pick your favourite country (other than Australia), print the coefficients, and make a hand sketch of the the model fit.
+
+
+#### 1. Plot all the models
+
+```{r augmente-many-countries, fig.height=4}
+country_aug <- country_model %>% 
+  mutate(augmented = map(model, augment)) %>%
+  unnest(augmented)
+
+country_aug
+```
+
+
+```{r plot-gapminder-data, fig.height=4}
+p1 <- gapminder %>% 
+  ggplot(aes(year, lifeExp, group = country)) +
+    geom_line(alpha = 1/3) + ggtitle("Data")
+
+p2 <- ggplot(country_aug) + 
+  geom_line(aes(x = year1950 + 1950, 
+                y = .fitted, 
+                group = country), 
+            alpha = 1/3) +
+  xlab("year") +
+  ggtitle("Fitted models")
+```
+
+```{r plot-print-gapminder, fig.height = 4}
+library(gridExtra)
+grid.arrange(p1, p2, ncol=2)
+```
+
+
+#### 2. Plot all the model coefficients
+
+```{r ggplotly-aug-coef}
+p <- ggplot(tidy_country_coefs, 
+            aes(x = intercept, 
+                y = year1950, 
+                colour = continent, 
+                label = country)) +
+  geom_point(alpha = 0.5, 
+             size = 2) +
+  scale_color_brewer(palette = "Dark2")
+```
+
+```{r ggplotly-aug-data}
+library(plotly)
+ggplotly(p)
+```
+
+
+Let's summarise the information we learnt from the model coefficients.
+
+- Generally, the relationship is negative: this means that if a country starts with a high intercept, it tends to have lower rate of increase.
+- There is a difference across the continents: Countries in Europe and Oceania tend to start with a higher life expectancy and increased; countries in Asia and America tended to start lower but have high rates of improvement; Africa tends to start lower and have a huge range in rate of change.
+- Three countries had negative growth in life expectancy: Rwand, Zimbabwe, Zambia
+
+
+#### Model diagnostics by country
+
+```{r glance-country}
+country_glance <- country_model %>% 
+  mutate(glance = map(model, glance)) %>%
+  unnest(glance)
+
+country_glance
+```
+
+
+#### 3. Plot the $R^2$ values using a histogram. 
+
+```{r country-fit, fig.height = 3.5}
+ggplot(country_glance, 
+       aes(x = r.squared)) + 
+  geom_histogram()
+```
+
+
+#### 4. Countries with worst fit
+
+Examine the countries with the worst fit, countries with $R^2<0.45$, by making scatterplots of the data, with the linear model overlaid. 
+
+```{r show-bad-fit}
+badfit <- country_glance %>% filter(r.squared <= 0.45)
+
+gap_bad <- gap %>% filter(country %in% badfit$country)
+
+gg_bad_fit <-
+ggplot(data = gap_bad, 
+       aes(x = year, 
+           y = lifeExp)) + 
+         geom_point() +
+  facet_wrap(~country) +
+  scale_x_continuous(breaks = seq(1950,2000,10), 
+                     labels = c("1950", "60","70", "80","90","2000")) +
+  geom_smooth(method = "lm", 
+              se = FALSE)
+```
+
+
+```{r gg-show-bad-fit, fig.height=4}
+gg_bad_fit
+```
+
+Each of these countries was moving on a nice trajectory of increasing life expectancy, but later suffered a big dip during the time period.
+
+
+
